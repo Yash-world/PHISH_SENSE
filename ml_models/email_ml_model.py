@@ -10,7 +10,10 @@ from sklearn.metrics import accuracy_score, classification_report
 
 # ================= LOAD DATA =================
 
-df = pd.read_csv(r"C:\Users\yashp\Downloads\CEAS_08.csv\CEAS_08.csv")
+BASE_DIR = Path(__file__).resolve().parent
+DATASET_PATH = BASE_DIR / "dataset" / "CEAS_08.csv"
+
+df = pd.read_csv(DATASET_PATH)
 
 # ================= FEATURE ENGINEERING =================
 
