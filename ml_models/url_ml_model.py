@@ -10,7 +10,9 @@ from sklearn.metrics import classification_report, accuracy_score
 from Features import extract_features
 
 # Load dataset
-df = pd.read_csv(r"C:\Users\yashp\Downloads\PhiUSIIL_Phishing_URL_Dataset.csv")
+
+BASE_DIR = Path(__file__).resolve().parent
+DATASET_PATH = BASE_DIR / "dataset" / "PhiUSIIL_Phishing_URL_Dataset.csv"
 
 
 
