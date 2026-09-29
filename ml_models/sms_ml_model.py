@@ -7,7 +7,9 @@ from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.metrics import classification_report
 
 # ================= LOAD DATA =================
-df = pd.read_csv(r"C:\Users\yashp\Downloads\Dataset_10191.csv")
+
+BASE_DIR = Path(__file__).resolve().parent
+DATASET_PATH = BASE_DIR / "dataset" / "Dataset_10191.csv"
 
 # sirf required columns
 df = df[['LABEL', 'TEXT']]
