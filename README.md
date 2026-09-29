@@ -2,7 +2,7 @@
 
 ### AI-Powered Multi-Channel Threat Detection — URLs • Emails • SMS
 
-**A machine learning-based cybersecurity system that detects phishing attempts across URLs, emails, and SMS messages — in real time.**
+**A machine learning-based cybersecurity system that detects phishing attempts across URLs, emails, and SMS messages.**
 
 [Features](#-features) • [Architecture](#-architecture) • [Installation](#-installation) • [Dataset](#-dataset) • [Usage](#-usage) • [Tech Stack](#-tech-stack) • [Contributing](#-contributing)
 
@@ -10,22 +10,28 @@
 
 ## 📖 Overview
 
-Phishing attacks remain one of the most common and dangerous cybersecurity threats — targeting individuals and organizations through deceptive **links, emails, and text messages**. This project combines **machine learning** with **cybersecurity heuristics** to automatically analyze suspicious content and classify it as **legitimate** or **potentially malicious**, helping users identify threats before they cause harm.
+Phishing attacks remain one of the most common and dangerous cybersecurity threats — targeting individuals and organizations through deceptive **links, emails, and text messages**.
 
-Unlike single-purpose detectors, this system is built as a **unified, multi-vector defense platform** — covering the three most common phishing attack surfaces in one dashboard.
+This project combines **machine learning** with **cybersecurity heuristics** to analyze suspicious content and classify it as **legitimate** or **potentially malicious**.
+
+The system provides a unified platform for detecting phishing threats across three common attack surfaces:
+
+* 🔗 URLs
+* 📧 Emails
+* 📱 SMS
 
 ---
 
 ## ✨ Features
 
-| Module                           | Description                                                                 |
-| -------------------------------- | --------------------------------------------------------------------------- |
-| 🔗 **URL Analyzer**              | Detects malicious/spoofed URLs using pattern analysis and ML classification |
-| 📧 **Email Scanner**             | Flags phishing emails based on content, headers, and linguistic patterns    |
-| 📱 **SMS Detector**              | Identifies smishing (SMS phishing) attempts in text messages                |
-| 📊 **Interactive Dashboard**     | Centralized view to monitor scans, results, and threat statistics           |
-| 🧠 **ML-Powered Classification** | Dedicated trained models for each channel (URL, Email, SMS)                 |
-| 🩹 **Recovery Guidance**         | Step-by-step guidance page for users who may have already been compromised  |
+| Module                           | Description                                                                    |
+| -------------------------------- | ------------------------------------------------------------------------------ |
+| 🔗 **URL Analyzer**              | Detects potentially malicious URLs using feature analysis and machine learning |
+| 📧 **Email Scanner**             | Analyzes email content and linguistic patterns to identify potential phishing  |
+| 📱 **SMS Detector**              | Identifies potential smishing attempts in SMS messages                         |
+| 📊 **Interactive Dashboard**     | Centralized interface for scan results and threat statistics                   |
+| 🧠 **ML-Powered Classification** | Separate machine learning models for URL, Email, and SMS detection             |
+| 🩹 **Recovery Guidance**         | Provides suggested security steps after a potential phishing incident          |
 
 ---
 
@@ -33,14 +39,14 @@ Unlike single-purpose detectors, this system is built as a **unified, multi-vect
 
 ```text
 ┌─────────────────────────────────────────────────────────┐
-│                      Web Interface                       │
-│   home.html │ dashboard.html │ url.html │ email.html   │
-│              │ sms.html │ recovery.html                │
+│                    Web Interface                        │
+│  home.html │ dashboard.html │ url.html │ email.html   │
+│             │ sms.html │ recovery.html                │
 └──────────────────────────┬──────────────────────────────┘
                            │
                     ┌──────▼──────┐
-                    │   app.py    │  ◄── Flask Backend
-                    │  (Routing)  │
+                    │   app.py    │
+                    │ Flask Backend│
                     └──────┬──────┘
                            │
         ┌──────────────────┼──────────────────┐
@@ -53,7 +59,8 @@ Unlike single-purpose detectors, this system is built as a **unified, multi-vect
         └──────────────────┼──────────────────┘
                            ▼
                    ┌───────────────┐
-                   │  Features.py  │  ◄── Feature Extraction
+                   │  Features.py  │
+                   │Feature Extraction│
                    └───────────────┘
 ```
 
@@ -62,10 +69,10 @@ Unlike single-purpose detectors, this system is built as a **unified, multi-vect
 ## 🛠️ Tech Stack
 
 * **Backend:** Python, Flask
-* **Machine Learning:** Scikit-learn (classification models trained per channel)
+* **Machine Learning:** Scikit-learn
 * **Frontend:** HTML, CSS, JavaScript
 * **Feature Engineering:** Custom feature extraction pipeline (`Features.py`)
-* **Dataset:** Public phishing datasets hosted on Kaggle
+* **Datasets:** Public phishing-related datasets hosted on Kaggle
 
 ---
 
@@ -74,88 +81,117 @@ Unlike single-purpose detectors, this system is built as a **unified, multi-vect
 ```text
 Phishing-Detection-System/
 │
-├── app.py                   # Main Flask application & routes
-├── Features.py              # Feature extraction utilities for ML models
+├── app.py
+├── Features.py
 │
-├── url_ml_model.py          # URL phishing classification model
-├── email_ml_model.py        # Email phishing classification model
-├── sms_ml_model.py          # SMS phishing classification model
+├── url_ml_model.py
+├── email_ml_model.py
+├── sms_ml_model.py
 │
 ├── dataset/
-│   └── phishing_dataset.csv # Downloaded dataset (not included in GitHub)
+│   └── .gitkeep
 │
 ├── models/
 │   ├── url_model.pkl
 │   ├── email_model.pkl
 │   └── sms_model.pkl
 │
-├── home.html                # Landing page
-├── dashboard.html           # Analytics & results dashboard
-├── url.html                 # URL scanner interface
-├── email.html               # Email scanner interface
-├── sms.html                 # SMS scanner interface
-├── recovery.html            # Post-attack recovery guidance
+├── home.html
+├── dashboard.html
+├── url.html
+├── email.html
+├── sms.html
+├── recovery.html
 │
 ├── requirements.txt
 └── README.md
 ```
 
-> **Note:** The dataset is not included directly in this GitHub repository because of its large file size. It is hosted separately on Kaggle.
+> **Note:** The actual dataset files are not included in this GitHub repository because of their large file size. The datasets are hosted on Kaggle.
+
+The `.gitkeep` file only keeps the empty `dataset` folder available in the GitHub repository.
 
 ---
 
 ## 📊 Dataset
 
-The dataset used for training the phishing detection models is hosted on **Kaggle** because of its large file size.
+This project uses separate datasets for:
 
-### 🔗 Dataset Download
+* 🔗 URL Phishing Detection
+* 📧 Email Phishing Detection
+* 📱 SMS Phishing Detection
 
-**Kaggle Dataset:**
-`[KAGGLE DATASET LINK — ADD HERE]`
+Because the datasets are large, they are hosted on Kaggle instead of being uploaded directly to GitHub.
+
+### 🔗 Kaggle Dataset
+
+Download the datasets from:
+
+**[Download Phishing Detection Datasets from Kaggle](https://www.kaggle.com/datasets/yashpratap02/phishing-dectection-system)**
+
+---
 
 ### 📥 Dataset Setup
 
-After downloading the dataset from Kaggle:
+After cloning the repository, download the required dataset files from Kaggle.
 
-1. Clone this repository:
-
-```bash
-git clone https://github.com/Yash-world/Phishing-Detection-System.git
-cd Phishing-Detection-System
-```
-
-2. Create a `dataset` folder if it does not already exist:
+Create or use the `dataset` folder:
 
 ```text
 Phishing-Detection-System/
 └── dataset/
 ```
 
-3. Place the downloaded CSV file inside the `dataset` folder.
+Place the downloaded dataset files inside this folder.
 
-Rename the dataset to:
-
-```text
-phishing_dataset.csv
-```
-
-The final path should be:
+The final structure should look similar to:
 
 ```text
-Phishing-Detection-System/dataset/phishing_dataset.csv
+Phishing-Detection-System/
+│
+├── dataset/
+│   ├── URL_DATASET.csv
+│   ├── CEAS_08.csv
+│   └── SMS_DATASET.csv
+│
+├── app.py
+├── Features.py
+├── url_ml_model.py
+├── email_ml_model.py
+└── sms_ml_model.py
 ```
 
-### ⚠️ Important
+### 📧 Email Dataset
 
-The dataset is required if you want to **train the machine learning models from scratch**.
+The Email Detection model uses:
 
-The project uses separate models for:
+```text
+CEAS_08.csv
+```
 
-* URL phishing detection
-* Email phishing detection
-* SMS phishing detection
+Place the file here:
 
-If pre-trained model files are already included in the repository, you can run the application directly without retraining. Otherwise, download the dataset and run the corresponding training scripts before starting the Flask application.
+```text
+dataset/CEAS_08.csv
+```
+
+The dataset is loaded using a project-relative path:
+
+```python
+from pathlib import Path
+import pandas as pd
+
+BASE_DIR = Path(__file__).resolve().parent
+df = pd.read_csv(BASE_DIR / "dataset" / "CEAS_08.csv")
+```
+
+This allows the project to work on different computers without using a computer-specific path such as:
+
+```text
+C:\Users\yashp\Downloads\CEAS_08.csv
+```
+
+> **Important:** Dataset filenames must match the filenames expected by the corresponding Python scripts.
 
 ---
 
@@ -174,7 +210,7 @@ cd Phishing-Detection-System
 python -m venv venv
 ```
 
-Activate it:
+### 3. Activate the virtual environment
 
 **Windows:**
 
@@ -188,96 +224,140 @@ venv\Scripts\activate
 source venv/bin/activate
 ```
 
-### 3. Install dependencies
+### 4. Install dependencies
 
 ```bash
 pip install -r requirements.txt
 ```
 
-### 4. Download the dataset
+### 5. Download the datasets
 
-Download the dataset from the Kaggle link provided in the **Dataset** section above.
+Download the required datasets from Kaggle:
 
-https://www.kaggle.com/datasets/yashpratap02/phishing-dectection-system
+**[Kaggle Dataset](https://www.kaggle.com/datasets/yashpratap02/phishing-dectection-system)**
+
+Place the downloaded files inside:
 
 ```text
-dataset/phishing_dataset.csv
+dataset/
 ```
 
-### 5. Train the models
+For example:
 
-If the repository contains training scripts, run the appropriate training scripts:
+```text
+dataset/
+├── Dataset_10191.csv
+├── CEAS_08.csv
+└── PhiUSIIL_Phishing_URL_Dataset.csv
+```
+
+### 6. Train the models
+
+If you want to train the models from scratch, run the corresponding training scripts provided in the project.
+
+For example:
 
 ```bash
-python train_model.py
+python url_ml_model.py
+python email_ml_model.py
+python sms_ml_model.py
 ```
 
-> If the project uses separate training files for URL, Email, and SMS models, run those respective training scripts instead.
+> **Note:** The exact training command depends on the implementation of each model file. If pre-trained model files are already available, retraining may not be required.
 
-The trained model files should be saved inside the `models/` directory.
-
-### 6. Run the application
+### 7. Run the application
 
 ```bash
 python app.py
 ```
 
-The app will start on:
+The application will start at:
 
 ```text
 http://127.0.0.1:5000/
 ```
 
-Open this address in your browser to access the application.
+Open this address in your browser.
 
 ---
 
 ## 🚀 Usage
 
-1. Launch the app and open the **Home** page.
-2. Choose a scan type — **URL**, **Email**, or **SMS**.
-3. Paste the content you want to analyze.
-4. The system extracts features and runs it through the relevant trained ML model.
-5. Get instant results and threat statistics on the **Dashboard**: ✅ **Legitimate** or 🚨 **Phishing Detected**.
-6. If flagged, refer to the **Recovery** page for suggested next steps.
+1. Launch the Flask application.
+2. Open the **Home** page.
+3. Select a scan type:
+
+   * URL
+   * Email
+   * SMS
+4. Enter the content you want to analyze.
+5. The system extracts the required features.
+6. The corresponding machine learning model processes the input.
+7. The result is displayed as:
+
+   * ✅ Legitimate
+   * 🚨 Phishing Detected
+8. If a suspicious result is detected, refer to the **Recovery** page for suggested security steps.
 
 ---
 
 ## 🧠 Model Training
 
-The project uses machine learning models trained separately for different phishing attack vectors.
+The system uses separate machine learning models for different phishing channels.
 
-### URL Detection
+### 🔗 URL Detection
 
-The URL model analyzes features such as URL structure, suspicious patterns, domain characteristics, and other extracted URL features.
+The URL model analyzes URL characteristics and extracted features to identify potentially malicious URLs.
 
-### Email Detection
+### 📧 Email Detection
 
-The email model analyzes email content and linguistic characteristics to identify potential phishing messages.
+The Email model analyzes email content and linguistic characteristics to identify potential phishing emails.
 
-### SMS Detection
+The email dataset used by the project includes:
 
-The SMS model analyzes message text and linguistic patterns to identify potential smishing attempts.
+```text
+CEAS_08.csv
+```
 
-Training the models requires the appropriate datasets to be available locally.
+### 📱 SMS Detection
+
+The SMS model analyzes message content and linguistic patterns to identify potential smishing messages.
+
+---
+
+## ⚠️ Dataset and Model Requirements
+
+If you are only running the application with pre-trained models, you may not need to download the datasets.
+
+If you want to **retrain the models**, you must:
+
+1. Download the required datasets from Kaggle.
+2. Place them inside the `dataset/` folder.
+3. Make sure the filenames match the paths used in the Python scripts.
+4. Run the appropriate model training scripts.
+5. Verify that the trained model files are generated correctly.
+6. Start the Flask application.
 
 ---
 
 ## 🗺️ Roadmap
 
 * [ ] Add REST API endpoints for programmatic access
-* [ ] Browser extension for real-time URL scanning
-* [ ] Model performance metrics dashboard (precision/recall/F1)
-* [ ] Support for additional languages in SMS/email detection
-* [ ] Dockerize the application for easier deployment
+* [ ] Browser extension for URL scanning
+* [ ] Model performance metrics dashboard
+* [ ] Precision/Recall/F1 reporting
+* [ ] Support for additional languages
+* [ ] Dockerize the application
 
 ---
 
 ## 🤝 Contributing
 
-Contributions are welcome! To contribute:
+Contributions are welcome!
 
-1. Fork the repository
+To contribute:
+
+1. Fork the repository.
 2. Create a feature branch:
 
 ```bash
@@ -296,7 +376,7 @@ git commit -m "Add amazing feature"
 git push origin feature/amazing-feature
 ```
 
-5. Open a Pull Request
+5. Open a Pull Request.
 
 ---
 
