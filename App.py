@@ -1,414 +1,578 @@
-from flask import Flask  , render_template , request
-import re 
-import pandas as pd
-import tldextract 
-import language_tool_python
-tool = language_tool_python.LanguageTool('en-US')
-import pytesseract
-import numpy as np
-import warnings
-warnings.filterwarnings("ignore")
 
-from PIL import Image
-from Machine_learning.Features import extract_features ,extract_email_features ,extract_sms_features
+from __future__ import annotations
+
+import os
+import re
+from pathlib import Path
 
 import joblib
+import pytesseract
+from flask import Flask, render_template, request
+from PIL import Image, UnidentifiedImageError
 
-model = joblib.load("phishing_model.pkl")
-email_model = joblib.load("email_rf_model.pkl")
-sms_model  = joblib.load("sms_rf_model.pkl")
-vectorizer = joblib.load("sms_vectorizer.pkl")
+from utils.Features import analyze_url, extract_features
+from utils.scoring import (
+    apply_overrides,
+    combine,
+    make_reasons,
+    risk_label,
+    score_from_points,
+)
+from utils.text_rules import email_rules, extract_urls, sms_rules
 
 
+BASE_DIR = Path(__file__).resolve().parent
+MODELS_DIR = BASE_DIR / "models"
 
-app=Flask(__name__)
+app = Flask(__name__)
+
+# Limit uploaded screenshots to 5 MB.
+app.config["MAX_CONTENT_LENGTH"] = 5 * 1024 * 1024
+
+ALLOWED_IMAGE_EXTENSIONS = {".png", ".jpg", ".jpeg", ".webp"}
 
 
+def _load_model(filename: str):
+    """Load a trained model from the models directory."""
+    path = MODELS_DIR / filename
 
-@app.route('/')
+    if not path.exists():
+        return None
+
+    try:
+        return joblib.load(path)
+    except Exception:
+        return None
+
+
+url_model = _load_model("url_model.pkl")
+email_model = _load_model("email_model.pkl")
+sms_model = _load_model("sms_model.pkl")
+
+
+def _model_error(model_name: str) -> str:
+    return (
+        f"{model_name} model is missing or could not be loaded. "
+        f"Run the corresponding training script in ml_models/ first."
+    )
+
+
+def _image_text(upload) -> str:
+    """Extract text from an uploaded screenshot using OCR."""
+    if not upload or not upload.filename:
+        return ""
+
+    suffix = Path(upload.filename).suffix.lower()
+
+    if suffix not in ALLOWED_IMAGE_EXTENSIONS:
+        raise ValueError(
+            "Only PNG, JPG, JPEG and WEBP screenshots are allowed."
+        )
+
+    try:
+        image = Image.open(upload.stream)
+        image.verify()
+
+        upload.stream.seek(0)
+        image = Image.open(upload.stream)
+
+        return pytesseract.image_to_string(image)
+
+    except (UnidentifiedImageError, OSError) as exc:
+        raise ValueError(
+            "The uploaded screenshot is not a valid image."
+        ) from exc
+
+
+def _class_probability(model, text_or_features, class_value) -> float:
+    if model is None or not hasattr(model, "predict_proba"):
+        return 0.0
+
+    probs = model.predict_proba(text_or_features)[0]
+    classes = list(getattr(model, "classes_", []))
+
+    if class_value not in classes:
+        return 0.0
+
+    index = classes.index(class_value)
+    return float(probs[index] * 100.0)
+
+
+def _url_rule_score(info: dict) -> tuple[float, list[tuple[str, float]]]:
+    signals = info["signals"]
+    points = 0.0
+    reasons = []
+
+    checks = [
+        (
+            "@" in info["normalized"],
+            18,
+            "@ symbol detected",
+        ),
+        (
+            signals["ip_host"],
+            35,
+            "IP-address host detected",
+        ),
+        (
+            signals["punycode"],
+            30,
+            "Punycode hostname detected",
+        ),
+        (
+            signals["non_ascii"],
+            25,
+            "Non-ASCII hostname characters detected",
+        ),
+        (
+            signals["brand_wrong_place"],
+            30,
+            "Brand name appears outside its legitimate domain",
+        ),
+        (
+            signals["typosquat"],
+            28,
+            "Possible typosquatting detected",
+        ),
+        (
+            signals["suspicious_tld"],
+            15,
+            f"Suspicious TLD detected: .{info['tld']}",
+        ),
+        (
+            signals["shortener"],
+            12,
+            "URL shortener detected",
+        ),
+        (
+            bool(signals["credential_hits"]),
+            min(15, len(signals["credential_hits"]) * 5),
+            "Credential/security keyword in host or path",
+        ),
+        (
+            len(info["normalized"]) > 75,
+            8,
+            "Unusually long URL",
+        ),
+        (
+            len(info["host"].split(".")[:-2]),
+            8,
+            "Deep subdomain structure",
+        ),
+        (
+            signals["nonstandard_port"],
+            10,
+            "Non-standard port detected",
+        ),
+        (
+            "//" in info["path"],
+            8,
+            "Double slash in URL path",
+        ),
+        (
+            info["normalized"].count("%") >= 3,
+            6,
+            "Encoded characters detected",
+        ),
+        (
+            (
+                len(
+                    [
+                        value
+                        for value in info["normalized"]
+                        .split("?")[-1]
+                        .split("&")
+                        if value
+                    ]
+                )
+                >= 5
+                if "?" in info["normalized"]
+                else False
+            ),
+            6,
+            "Many query parameters",
+        ),
+        (
+            signals["dangerous_extension"],
+            20,
+            "Potentially dangerous file extension",
+        ),
+    ]
+
+    for condition, weight, reason in checks:
+        if condition:
+            points += weight
+            reasons.append((reason, float(weight)))
+
+    return min(points, 100.0), reasons
+
+
+def _analyze_url_for_route(raw_url: str):
+    info = analyze_url(raw_url)
+
+    rule_pct, reasons = _url_rule_score(info)
+
+    if url_model is None:
+        raise RuntimeError(_model_error("URL"))
+
+    ml_pct = _class_probability(
+        url_model,
+        info["features"].reshape(1, -1),
+        1,
+    )
+
+    final = combine(rule_pct, ml_pct)
+    final = apply_overrides(
+        final,
+        info["hard_flags"],
+        info["trusted"],
+    )
+
+    if info["trusted"] and not info["hard_flags"]:
+        reasons.append(
+            (
+                f"Trusted registered domain: {info['registered_domain']}",
+                0,
+            )
+        )
+
+    reasons = make_reasons(reasons)
+
+    return (
+        final,
+        ml_pct,
+        rule_pct,
+        risk_label(final),
+        reasons,
+    )
+
+
+@app.route("/")
 def home():
-    return render_template('home.html')
+    return render_template("home.html")
 
 
-#url logic
-phish_words = ['login', 'verify', 'update', 'bank', 'secure', 'account']
-
-
-@app.route('/url', methods=["GET", "POST"])
-
+@app.route("/url", methods=["GET", "POST"])
 def form():
-    result = None
-  
-  
-    max_score =  10 + 10 + 10 + 10 + (len(phish_words) * 10) + 10 + 10 + 10 + 10 + 10 
-    risk_percentage = 0
-    ml_risk = 0
- 
-  
-   
+    if request.method == "GET":
+        return render_template("url.html")
 
-    if request.method == "POST":
-        url = request.form['url']
-        features = extract_features(url)
-        features = features.reshape(1 ,-1)
+    raw_url = request.form.get("url", "").strip()
 
-        ml_prob = model.predict_proba(features)[0]* 100
-        
-       
-     
-       
-        score = 0
-        reasons = []
+    if not raw_url:
+        return render_template(
+            "url.html",
+            error="Please enter a URL.",
+        )
 
-       
-    
+    try:
+        final, ml_pct, rule_pct, label, reasons = _analyze_url_for_route(
+            raw_url
+        )
 
-        if "@"in url:
-            score += 10
-            reasons.append("@ symbol dectected")
-        
+        return render_template(
+            "dashboard.html",
+            result=(
+                f"{label} Risk "
+                f"{'✅' if label == 'Low' else '⚠' if label == 'Medium' else '🚨'}"
+            ),
+            risk_percentage=round(final, 2),
+            ml_risk=round(ml_pct, 2),
+            rule_score=round(rule_pct, 2),
+            final_score=round(final, 2),
+            reasons=reasons,
+            back_url="/url",
+            scan_type="URL",
+        )
 
-        if url.startswith("http://"):
-            url = "http://" + url
-            score += 10
-            reasons.append("uncertain https")
-           
-
-        if url.count('.') > 3:
-            score += 10
-            reasons.append("dot count risk")
-       
-
-        if len(url) > 60:
-            score += 10
-            reasons.append("suspicious lenght")
+    except (ValueError, RuntimeError) as exc:
+        return render_template(
+            "url.html",
+            error=str(exc),
+            url=raw_url,
+        )
 
 
-        track_hits = [word for word in phish_words if word in url]
-
-        score += sum(10 for word in phish_words if word in url.lower())
-        reasons.append(f"Phishing words detected: {', '.join(track_hits)}")
-
-        ext = tldextract.extract(url)
-        domain = ext.domain
-        subdomain = ext.subdomain
-
-        if '-' in domain:
-            score += 10
-            reasons.append("- in domain dectected")
-
-        if subdomain.count('.') >= 2:
-            score += 10
-            reasons.append("to many dot cout in subdomain dectected")
-
-        if re.search(r'(\d{1,3}\.){3}\d{1,3}', url):
-            score += 10
-        reasons.append("unkown ip ")
-
-        if url.count('/') > 5:
-            score += 10
-        reasons.append("to many slash count ")
-
-        if re.match(r'http[s]?://[^/]+//', url):
-            score += 10
-        reasons.append("uncertain ip ")
-
-        risk_percentage = round((score / max_score) * 100)
-
-
-        ml_risk = (ml_prob )
-        
-       
-
-     
-
-        if risk_percentage <= 30:
-            result =  "Low Risk ✅"
-        elif risk_percentage <= 60:
-            result = "Medium Risk ⚠"
-        else:
-            result =  "High Risk 🚨"
-
-
-   
-      
-        
-
-
-
-
-
-        return render_template("dashboard.html",
-                               result=result,
-                               reasons=reasons,
-               risk_percentage=risk_percentage,
-                           ml_risk=ml_risk
-
-            
-                               )
-
-    return render_template("url.html")
-
-
-
-#email logic 
-
-
-@app.route('/email', methods=["GET", "POST"])
+@app.route("/email", methods=["GET", "POST"])
 def email_check():
+    if request.method == "GET":
+        return render_template("email.html")
 
-    result = None
-    matches = []
-    risk_percentage = 0
-    ml_risk = 0 
-    reasons = []
- 
-    
-   
-  
-    sus_words = ['urgent', 'verify', 'login', 'password','bank', 'account', 
-             'click', 'update','confirm', 'suspend', 'security alert']
+    email_text = request.form.get("email", "").strip()
+    screenshot = request.files.get("screenshot")
 
-    urgent_words = ['immediately', 'act now', 'limited time',
-                    'within 24 hours', 'suspended']
+    try:
+        extracted = _image_text(screenshot)
 
-    info_words = ['enter password', 'send otp','credit card',
-                  'debit card','cvv']
+        if extracted:
+            email_text = f"{email_text}\n{extracted}".strip()
 
-    if request.method == "POST":
-       
-        
+        if not email_text:
+            return render_template(
+                "email.html",
+                error="Please enter email text or upload a screenshot.",
+            )
 
-        email_text = request.form.get('email', '')
-        screenshot = request.files.get('screenshot')
+        if email_model is None:
+            raise RuntimeError(_model_error("Email"))
 
-        if screenshot and screenshot.filename != "":
-            image = Image.open(screenshot)
-            extracted_text = pytesseract.image_to_string(image)
-            email_text += " " + extracted_text.lower()
+        rule_pct, reasons, hard_flags = email_rules(email_text)
 
-        email_text = email_text.lower()
-        features = extract_email_features(email_text)
+        grammar_points = 0.0
+        grammar_reason = None
 
-     
+        if os.getenv("GRAMMAR_ENABLED", "0") == "1":
+            try:
+                import language_tool_python
 
-        email_score = 0
-        max_score = 10 + 10 +  (len(sus_words)*10) + (len(urgent_words)*10) + (len(info_words)*10)
-        ml_prob = email_model.predict_proba([features])[0][1]*100
+                tool = language_tool_python.LanguageTool("en-US")
+                errors = len(tool.check(email_text))
 
+                grammar_points = min(10.0, errors * 1.5)
 
+                if grammar_points:
+                    grammar_reason = (
+                        f"Grammar/spelling anomalies detected ({errors})",
+                        grammar_points,
+                    )
 
+                tool.close()
 
+            except Exception:
+                grammar_points = 0.0
 
+        if grammar_reason:
+            reasons.append(grammar_reason)
+            rule_pct = min(
+                100.0,
+                rule_pct + grammar_points,
+            )
 
-        track_hits = [word for word in sus_words if word in email_text]
-        email_score += sum(10 for word in sus_words if word in email_text)
-        reasons.append(f"sus words detected : {', '.join(track_hits)}")
+        if extracted:
+            reasons.append(
+                (
+                    "Text read from screenshot (OCR)",
+                    0,
+                )
+            )
 
-     
-        if email_text.count("http") >= 2:
-            email_score += 10
-            reasons.append("https  detected ")
+        ml_pct = _class_probability(
+            email_model,
+            [email_text],
+            1,
+        )
 
-      
-        if re.search(r'\.(xyz|top|tk|gq)', email_text):
-            email_score += 10
-            reasons.append("wrong username detected ")
+        final = combine(rule_pct, ml_pct)
+        final = apply_overrides(
+            final,
+            hard_flags,
+            False,
+        )
 
+        reasons = make_reasons(reasons)
+        label = risk_label(final)
 
+        return render_template(
+            "dashboard.html",
+            email_text=email_text,
+            result=(
+                f"{label} Risk "
+                f"{'✅' if label == 'Low' else '⚠' if label == 'Medium' else '🚨'}"
+            ),
+            risk_percentage=round(final, 2),
+            ml_risk=round(ml_pct, 2),
+            rule_score=round(rule_pct, 2),
+            final_score=round(final, 2),
+            reasons=reasons,
+            back_url="/email",
+            scan_type="Email",
+        )
 
-
-        track_hits = [word for word in urgent_words if word in email_text]
-        email_score += sum(10 for word in urgent_words if word in email_text)
-        reasons.append(f"urgent words detected: {', '.join(track_hits)}")
-
-        track_hits = [word for word in info_words if word in email_text]
-        email_score += sum(10 for word in info_words if word in email_text)
-        reasons.append(f"scam words  detected : {', '.join(track_hits)} ")
-
-        
-        matches = tool.check(email_text)
-        error_count = len(matches)
-
-        if error_count >= 10:
-            email_score += 30
-        elif error_count >= 5:
-            email_score += 20
-        elif error_count >= 2:
-            email_score += 10
-
-        email_risk_percentage = round((email_score / max_score) * 100)
-        ml_risk = (ml_prob , 2)
-
-        if risk_percentage < 30:
-            result = "Low Risk ✅"
-        elif risk_percentage < 60:
-            result = "Medium Risk ⚠"
-        else:
-            result =  "High Risk 🚨"
-
-        return render_template("dashboard.html",
-                               email_text=email_text,
-                  risk_percentage=risk_percentage,
-                               result=result,
-                               reasons=reasons,
-                               ml_risk=ml_risk)
-
-    return render_template('email.html')
-
-
+    except (ValueError, RuntimeError) as exc:
+        return render_template(
+            "email.html",
+            error=str(exc),
+            email_text=email_text,
+        )
 
 
-
-#sms logic
-keywords = ["urgent", "verify", "update", "click","login", "bank", "account", "suspended","winner", "free", "prize", "otp"] 
-short_links = ["bit.ly", "tinyurl", "goo.gl", "t.co"]
-urgent_words = ["immediately", "now", "within 24 hours", "act fast"]
-fake_words = ["secure-login", "verify-account", "update-info"]
-
-
-
-@app.route('/sms', methods=["GET", "POST"])
+@app.route("/sms", methods=["GET", "POST"])
 def sms_check():
+    if request.method == "GET":
+        return render_template("sms.html")
 
-    result = None
-    reasons = []
+    sms = request.form.get("sms", "").strip()
+    sender = request.form.get("sender", "").strip()
+    screenshot = request.files.get("screenshot")
+
+    try:
+        extracted = _image_text(screenshot)
+
+        if extracted:
+            sms = f"{sms}\n{extracted}".strip()
+
+        if not sms:
+            return render_template(
+                "sms.html",
+                error="Please enter SMS text or upload a screenshot.",
+            )
+
+        if sms_model is None:
+            raise RuntimeError(_model_error("SMS"))
+
+        rule_pct, reasons, hard_flags = sms_rules(
+            sms,
+            sender,
+        )
+
+        urls = extract_urls(sms)
+        max_url_risk = 0.0
+
+        for url in urls:
+            try:
+                url_final, _, _, _, _ = _analyze_url_for_route(url)
+                max_url_risk = max(max_url_risk, url_final)
+            except (ValueError, RuntimeError):
+                continue
+
+        if max_url_risk:
+            points = min(25.0, max_url_risk * 0.25)
+
+            rule_pct = min(
+                100.0,
+                rule_pct + points,
+            )
+
+            reasons.append(
+                (
+                    f"Highest linked URL risk: {max_url_risk:.0f}%",
+                    points,
+                )
+            )
+
+        if extracted:
+            reasons.append(
+                (
+                    "Text read from screenshot (OCR)",
+                    0,
+                )
+            )
+
+        probs = sms_model.predict_proba([sms])[0]
+        classes = list(getattr(sms_model, "classes_", []))
+
+        smishing_prob = (
+            probs[classes.index(2)] * 100
+            if 2 in classes
+            else 0.0
+        )
+
+        spam_prob = (
+            probs[classes.index(1)] * 100
+            if 1 in classes
+            else 0.0
+        )
+
+        ml_pct = min(
+            100.0,
+            smishing_prob + 0.5 * spam_prob,
+        )
+
+        final = combine(rule_pct, ml_pct)
+        final = apply_overrides(
+            final,
+            hard_flags,
+            False,
+        )
+
+        reasons = make_reasons(reasons)
+        label = risk_label(final)
+
+        return render_template(
+            "dashboard.html",
+            sms=sms,
+            result=(
+                f"{label} Risk "
+                f"{'✅' if label == 'Low' else '⚠' if label == 'Medium' else '🚨'}"
+            ),
+            risk_percentage=round(final, 2),
+            ml_risk=round(ml_pct, 2),
+            rule_score=round(rule_pct, 2),
+            final_score=round(final, 2),
+            reasons=reasons,
+            back_url="/sms",
+            scan_type="SMS",
+        )
+
+    except (ValueError, RuntimeError) as exc:
+        return render_template(
+            "sms.html",
+            error=str(exc),
+            sms=sms,
+        )
 
 
-
-    if request.method == "POST":
-        sms = request.form['sms']
-        screenshot = request.files.get('screenshot')
-
-        screenshot = request.files.get("screenshot")
-        if screenshot and screenshot.filename != "":
-            image = Image.open(screenshot.stream)
-            extracted_text = pytesseract.image_to_string(image)
-            sms = (sms or "") + "\n" + extracted_text
-
-
-
-        sms_lower = sms.lower()
-        features = extract_sms_features(sms)
-        score = 0
-        risk_percentage = 0
-        max_score = 10  + 10 + 10 +  (len(keywords)*10) + (len(short_links)*10) + (len(urgent_words)*10) + (len(fake_words)*10)
-        
-        ml_prob = float(sms_model.predict_proba(vectorizer.transform([sms]))[0][1]* 100)
-
-
-
-
-        track_hits = [word for word in keywords if word in sms_lower]
-        score += sum(10 for word in keywords if word in sms.lower())
-        reasons.append(f"wrong keywords : {', '.join(track_hits)}")
-
-        
-        if re.search(r"http[s]?://|www\.", sms_lower):
-            score += 10
-            reasons.append("uncertain url ")
-
-            
-        track_hits = [word for word in short_links if word in sms_lower]
-        score += sum(10 for word in short_links if word in sms.lower())
-        reasons.append(f"shorts links dectects : {', '.join(track_hits)} ")
-        
-        digits = sum(c.isdigit() for c in sms)
-        if digits > 6:
-            score += 10
-            reasons.append("digit in sms ")
-
-        
-        if sms.isupper() and len(sms) > 15:
-            score += 10
-            reasons.append("lenght of sms is suspcious ")
-
-        
-        track_hits = [word for word in urgent_words if word in sms_lower]
-        score +=  sum(10 for word in urgent_words if word in sms.lower())
-        reasons.append(f"fake words detected : {', '.join(track_hits)}")
-
-        track_hits = [word for word in fake_words if word in sms_lower]
-        score +=  sum(10 for word in fake_words if word in sms.lower())
-        reasons.append(f"fake words detected : {', '.join(track_hits)} ")
-
-
-
-
-        risk_percentage = round((score / max_score) * 100)
-        ml_risk = (ml_prob,2)
-
-
-
-        if risk_percentage < 30:
-            result = "Low Risk ✅"
-        elif risk_percentage < 60:
-            result = "Medium Risk ⚠"
-        else:
-            result = "High Risk 🚨"
-
-        
-
-        return render_template("dashboard.html",
-                               sms = sms ,
-                               result=result,
-                               reasons=reasons,
-                risk_percentage=risk_percentage,
-                               ml_risk=ml_risk)
-
-    return render_template("sms.html")
-
-
-
-
-
-
-@app.route('/recovery', methods=["GET", "POST"])
+@app.route("/recovery", methods=["GET", "POST"])
 def recovery():
+    recovery_type = (
+        request.form.get("type")
+        if request.method == "POST"
+        else None
+    )
 
-    recovery_type = None
-    steps = []
+    steps = {
+        "password": [
+            "Immediately change your password on the real website.",
+            "Enable two-factor authentication.",
+            "Log out from all devices.",
+            "Check login activity and remove unknown sessions.",
+        ],
+        "bank": [
+            "Call your bank using the official number immediately.",
+            "Block your debit/credit card if required.",
+            "Freeze online banking temporarily if advised by your bank.",
+            "Call Cyber Crime Helpline 1930 in India.",
+        ],
+        "otp": [
+            "Immediately contact the relevant bank/service.",
+            "Ask them to secure or block the affected account.",
+            "Monitor transactions and login activity carefully.",
+        ],
+        "device": [
+            "Disconnect the affected device from the internet if compromise is suspected.",
+            "Run a full antivirus/security scan.",
+            "Uninstall unknown applications.",
+            "Change passwords from another trusted device.",
+        ],
+    }.get(recovery_type, [])
 
-    if request.method == "POST":
-        recovery_type = request.form.get("type")
+    return render_template(
+        "recovery.html",
+        steps=steps,
+        recovery_type=recovery_type,
+    )
 
-        if recovery_type == "password":
-            steps = [
-                "Immediately change your password on the real website",
-                "Enable 2FA (Two Factor Authentication)",
-                "Logout from all devices",
-                "Check login activity and remove unknown sessions"
-            ]
 
-        elif recovery_type == "bank":
-            steps = [
-                "Call your bank helpline immediately",
-                "Block your debit/credit card",
-                "Freeze online banking temporarily",
-                "Immediately call Cyber Crime Helpline: 1930"
-            ]
-
-        elif recovery_type == "otp":
-            steps = [
-                "Immediately contact your bank",
-                "Block your account temporarily",
-                "Monitor transactions carefully"
-            ]
-
-        elif recovery_type == "device":
-            steps = [
-                "Disconnect from internet",
-                "Run full antivirus scan",
-                "Uninstall unknown applications",
-                "Change passwords from another safe device"
-            ]
-
-    return render_template("recovery.html", steps=steps)
-
+@app.errorhandler(413)
+def too_large(_error):
+    return (
+        render_template(
+            "home.html",
+            error="Uploaded file is too large. Maximum size is 5 MB.",
+        ),
+        413,
+    )
 
 
 if __name__ == "__main__":
-    app.run(debug=True)
+    debug = os.getenv("FLASK_DEBUG", "0").lower() in {
+        "1",
+        "true",
+        "yes",
+    }
+
+    app.run(debug=debug)
+
 
 
 
