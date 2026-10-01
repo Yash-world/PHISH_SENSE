@@ -18,32 +18,33 @@ A Flask web app that scores **URLs, emails and SMS messages** for phishing risk.
 
 ## 📸 Screenshots
  
-### 🏠 Home
- 
+  
+🏠 Home
 <p align="center">
   <img src="https://github.com/user-attachments/assets/ebb7d128-97fe-41cf-aa07-87fdb21be53e" width="800" alt="Home page">
 </p>
-<p align="center"><em>Landing page with the URL, Email and SMS checkers.</em></p>
-### 🔗 URL check
- 
+
+
+
+🔗 URL check
 <p align="center">
   <img src="https://github.com/user-attachments/assets/9474165b-3c1b-4ff2-b4f3-81f63b0e1d08" width="800" alt="URL check page">
 </p>
-<p align="center"><em>Paste a link to get a phishing risk score.</em></p>
-### 📧 Email check
- 
+
+
+ 📧 Email check
 <p align="center">
   <img src="https://github.com/user-attachments/assets/4779ccdc-dacb-4e96-9070-a408d11d45bd" width="800" alt="Email check page">
 </p>
-<p align="center"><em>Paste email text or upload a screenshot.</em></p>
-### 💬 SMS check
- 
+
+💬 SMS check
 <p align="center">
   <img src="https://github.com/user-attachments/assets/80180f1a-d78b-4595-ab3b-dd6a8945ed42" width="800" alt="SMS check page">
 </p>
-<p align="center"><em>Paste an SMS (optional sender) or upload a screenshot.</em></p>
-### 🔴 Result: high risk
- 
+
+
+
+🔴 Result: high risk 
 <p align="center">
   <img src="https://github.com/user-attachments/assets/c6bc7af3-413c-4f80-84b8-ad73dfa9ac49" width="800" alt="High risk result (score)">
 </p>
@@ -51,14 +52,15 @@ A Flask web app that scores **URLs, emails and SMS messages** for phishing risk.
   <img src="https://github.com/user-attachments/assets/80f46785-673f-4e4a-b499-53e0267ae8be" width="800" alt="High risk result (reasons)">
 </p>
 <p align="center"><em>Rule score, ML score, final score and the top reasons behind the verdict.</em></p>
-### 🟢 Result: low risk
- 
+
+
+ 🟢 Result: low risk
 <p align="center">
   <img src="https://github.com/user-attachments/assets/43842fcf-19b8-4dbf-aa6f-0a65a1338e32" width="800" alt="Low risk result">
 </p>
 <p align="center"><em>A safe-looking input gets a low score with a clear explanation.</em></p>
-### 🆘 Recovery guidance
- 
+
+ 🆘 Recovery guidance
 <p align="center">
   <img src="https://github.com/user-attachments/assets/3536f1d8-4738-4ff2-bd16-2c483fe755b7" width="800" alt="Recovery page">
 </p>
