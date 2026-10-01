@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>PhishSence — Recovery</title>
+<title>PhishSense — Recovery</title>
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
 body{background:#02071e;color:#cfefff;font-family:'Courier New',monospace;min-height:100vh;display:flex;flex-direction:column}
@@ -33,7 +33,7 @@ form{display:none}
 <body>
 <div class="grid-bg"></div>
 <nav>
-  <span class="brand">PHISHSENCE</span>
+  <span class="brand">PHISHSENSE</span>
   <a href="{{ url_for('home') }}">Home</a>
   <a href="{{ url_for('form') }}">URL</a>
   <a href="{{ url_for('email_check') }}">Email</a>
@@ -68,16 +68,10 @@ form{display:none}
     <input type="hidden" name="type" id="rtype">
   </form>
 
-  <div class="helpline" style="margin-top:1.2rem"><div class="helpline" style="margin-top:1.2rem">
-
-  <a href="https://cybercrime.gov.in" target="_blank" 
-     style="color:#00ffff;text-decoration:none">
-    🔒 Report to Cybercrime Portal
-  </a>
+  <div class="helpline" style="margin-top:1.2rem">
+  <a href="https://cybercrime.gov.in" target="_blank" rel="noopener"
+     style="color:#00ffff;text-decoration:none">🔒 Report to Cybercrime Portal</a>
 </div>
-
-
-
 </main>
 <script>
 function submit_type(t){document.getElementById('rtype').value=t;document.getElementById('rform').submit()}
