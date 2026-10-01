@@ -1,177 +1,1119 @@
 <!DOCTYPE html>
+
 <html lang="en">
+
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>PhishSence — Dashboard</title>
+
+<title>PhishSense — Dashboard</title>
+
 <style>
-*{margin:0;padding:0;box-sizing:border-box}
-body{background:#02071e;color:#cfefff;font-family:'Courier New',monospace;min-height:100vh;display:flex;flex-direction:column}
-.grid-bg{position:fixed;inset:0;background-image:linear-gradient(rgba(0,255,255,.08) 1px,transparent 1px),linear-gradient(90deg,rgba(0,255,255,.08) 1px,transparent 1px);background-size:40px 40px;pointer-events:none;animation:moveGrid 24s linear infinite}
-@keyframes moveGrid{0%{background-position:0 0}100%{background-position:40px 40px}}
-nav{display:flex;gap:1.5rem;padding:1rem 2rem;border-bottom:1px solid rgba(0,255,255,.15);align-items:center;position:relative;z-index:1}
-nav a{color:#8bdcff;text-decoration:none;font-size:.8rem;letter-spacing:.12em;text-transform:uppercase;transition:.2s;text-shadow:0 0 5px rgba(0,255,255,.15)}
-nav a:hover,nav a.active{color:#00ffff;text-shadow:0 0 10px rgba(0,255,255,.4)}
-.brand{color:#00ffff;font-weight:700;font-size:1rem;letter-spacing:.1em;margin-right:auto;text-shadow:0 0 10px rgba(0,255,255,.4)}
-main{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:2rem;position:relative;z-index:1;gap:1.5rem}
-.result-label{font-size:1.8rem;font-weight:700;letter-spacing:.05em;text-shadow:0 0 10px rgba(0,255,255,.3)}
-.high{color:#ff3c00;text-shadow:0 0 8px rgba(255,0,0,.4)}.med{color:#ffaa00;text-shadow:0 0 8px rgba(255,170,0,.4)}.low{color:#00ff88;text-shadow:0 0 8px rgba(0,255,136,.4)}
-.gauge-wrap{background:#071a2e;border:2px solid rgba(0,255,255,.35);border-radius:16px;padding:2rem 2.5rem;display:flex;flex-direction:column;align-items:center;min-width:320px;box-shadow:0 0 20px rgba(0,255,255,.15)}
-canvas{display:block}
-.pct-display{font-size:2.2rem;font-weight:700;margin-top:.5rem;color:#00ffff;text-shadow:0 0 10px rgba(0,255,255,.4)}
-.pct-sub{font-size:.8rem;color:#8bdcff;letter-spacing:.1em;text-transform:uppercase;margin-top:.2rem;text-shadow:0 0 5px rgba(0,255,255,.2)}
-.meta{display:flex;gap:1rem;margin-top:.5rem}
-.badge{font-size:.75rem;padding:.3rem .8rem;border-radius:4px;letter-spacing:.08em;font-weight:600;text-shadow:0 0 5px rgba(0,255,255,.15)}
-.badge-low{background:#002a15;color:#00ff88;border:1px solid #00552a}
-.badge-med{background:#1f1210;color:#ffaa00;border:1px solid #aa7a00}
-.badge-high{background:#2a0500;color:#ff3c00;border:1px solid #ff3c00}
-.actions{display:flex;gap:.75rem;margin-top:1rem}
-.btn{padding:.6rem 1.2rem;border-radius:8px;font-size:.8rem;font-weight:600;letter-spacing:.1em;text-transform:uppercase;text-decoration:none;border:2px solid #00ffff;color:#8bdcff;transition:.2s;background:#02071e;text-shadow:0 0 5px rgba(0,255,255,.15)}
-.btn:hover{border-color:#00ffff;color:#00ffff;text-shadow:0 0 10px rgba(0,255,255,.4)}
-.btn-primary{background:#00ffff;border-color:#00ffff;color:#02071e}
-.btn-primary:hover{background:#00d7ff;color:#02071e}
 
-/* Risk Effects */
-.high-risk-effect { animation: redFlash 1s infinite alternate, shake 0.5s infinite; }
-@keyframes redFlash { from{box-shadow:0 0 20px rgba(255,0,0,.8);} to{box-shadow:0 0 40px rgba(255,0,0,1);} }
-@keyframes shake {0%{transform:translate(0,0);}25%{transform:translate(2px,0);}50%{transform:translate(-2px,0);}75%{transform:translate(2px,0);}100%{transform:translate(0,0);} }
+*{
+    margin:0;
+    padding:0;
+    box-sizing:border-box
+}
 
-.suspicious-effect { animation: yellowGlow 2s infinite alternate; position:relative; overflow:hidden; }
-@keyframes yellowGlow { from{box-shadow:0 0 15px rgba(255,170,0,.6);} to{box-shadow:0 0 30px rgba(255,170,0,1);} }
-.suspicious-effect::after { content:""; position:absolute; top:0; left:-100%; width:50%; height:100%; background:linear-gradient(90deg,rgba(255,255,255,.2),transparent); animation:sweep 3s infinite; }
-@keyframes sweep { from{left:-100%;} to{left:120%;} }
+body{
+    background:#02071e;
+    color:#cfefff;
+    font-family:'Courier New',monospace;
+    min-height:100vh;
+    display:flex;
+    flex-direction:column
+}
 
-.low-risk-effect { animation: calmGlow 3s infinite alternate; }
-@keyframes calmGlow { from{box-shadow:0 0 15px rgba(0,255,136,.4);} to{box-shadow:0 0 30px rgba(0,255,255,.6);} }
+.grid-bg{
+    position:fixed;
+    inset:0;
+    background-image:
+        linear-gradient(rgba(0,255,255,.08) 1px,transparent 1px),
+        linear-gradient(90deg,rgba(0,255,255,.08) 1px,transparent 1px);
+    background-size:40px 40px;
+    pointer-events:none;
+    animation:moveGrid 24s linear infinite
+}
 
-.ml-risk-wrap{background:#071a2e;border:2px solid rgba(0,255,255,.35);border-radius:12px;padding:1rem 1.5rem;min-width:200px;box-shadow:0 0 20px rgba(0,255,255,.15)}
-.ml-risk-label{font-size:1rem;font-weight:600}
-.ml-reasons{background:#071a2e;border:2px solid rgba(0,255,255,.35);border-radius:12px;padding:1rem 1.5rem;margin-top:1rem;min-width:320px;box-shadow:0 0 20px rgba(0,255,255,.15)}
-.ml-reasons h4{font-size:.9rem;letter-spacing:.08em;margin-bottom:.3rem;color:#8bdcff}
-.ml-reasons ul{list-style:none;padding-left:0;display:flex;flex-direction:column;gap:.25rem}
-.ml-reasons li{font-size:.85rem;color:#cfefff}
+@keyframes moveGrid{
+    0%{background-position:0 0}
+    100%{background-position:40px 40px}
+}
+
+nav{
+    display:flex;
+    gap:1.5rem;
+    padding:1rem 2rem;
+    border-bottom:1px solid rgba(0,255,255,.15);
+    align-items:center;
+    position:relative;
+    z-index:1
+}
+
+nav a{
+    color:#8bdcff;
+    text-decoration:none;
+    font-size:.8rem;
+    letter-spacing:.12em;
+    text-transform:uppercase;
+    transition:.2s;
+    text-shadow:0 0 5px rgba(0,255,255,.15)
+}
+
+nav a:hover,
+nav a.active{
+    color:#00ffff;
+    text-shadow:0 0 10px rgba(0,255,255,.4)
+}
+
+.brand{
+    color:#00ffff;
+    font-weight:700;
+    font-size:1rem;
+    letter-spacing:.1em;
+    margin-right:auto;
+    text-shadow:0 0 10px rgba(0,255,255,.4)
+}
+
+main{
+    flex:1;
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    justify-content:center;
+    padding:2rem;
+    position:relative;
+    z-index:1;
+    gap:1.5rem
+}
+
+.result-label{
+    font-size:1.8rem;
+    font-weight:700;
+    letter-spacing:.05em;
+    text-shadow:0 0 10px rgba(0,255,255,.3)
+}
+
+.high{
+    color:#ff3c00;
+    text-shadow:0 0 8px rgba(255,0,0,.4)
+}
+
+.med{
+    color:#ffaa00;
+    text-shadow:0 0 8px rgba(255,170,0,.4)
+}
+
+.low{
+    color:#00ff88;
+    text-shadow:0 0 8px rgba(0,255,136,.4)
+}
+
+.gauge-wrap{
+    background:#071a2e;
+    border:2px solid rgba(0,255,255,.35);
+    border-radius:16px;
+    padding:2rem 2.5rem;
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    min-width:320px;
+    box-shadow:0 0 20px rgba(0,255,255,.15)
+}
+
+canvas{
+    display:block
+}
+
+.pct-display{
+    font-size:2.2rem;
+    font-weight:700;
+    margin-top:.5rem;
+    color:#00ffff;
+    text-shadow:0 0 10px rgba(0,255,255,.4)
+}
+
+.pct-sub{
+    font-size:.8rem;
+    color:#8bdcff;
+    letter-spacing:.1em;
+    text-transform:uppercase;
+    margin-top:.2rem;
+    text-shadow:0 0 5px rgba(0,255,255,.2)
+}
+
+/* FINAL SCORE */
+.final-score-box{
+    margin-top:.7rem;
+    padding:.45rem 1rem;
+    border:1px solid rgba(0,255,255,.25);
+    border-radius:6px;
+    background:rgba(0,255,255,.04);
+    text-align:center;
+}
+
+.final-score-title{
+    font-size:.7rem;
+    color:#8bdcff;
+    letter-spacing:.1em;
+    text-transform:uppercase;
+}
+
+.final-score-value{
+    font-size:1.25rem;
+    font-weight:700;
+    color:#00ffff;
+    margin-top:.2rem;
+    text-shadow:0 0 8px rgba(0,255,255,.4);
+}
+
+.meta{
+    display:flex;
+    gap:1rem;
+    margin-top:.5rem
+}
+
+.badge{
+    font-size:.75rem;
+    padding:.3rem .8rem;
+    border-radius:4px;
+    letter-spacing:.08em;
+    font-weight:600;
+    text-shadow:0 0 5px rgba(0,255,255,.15)
+}
+
+.badge-low{
+    background:#002a15;
+    color:#00ff88;
+    border:1px solid #00552a
+}
+
+.badge-med{
+    background:#1f1210;
+    color:#ffaa00;
+    border:1px solid #aa7a00
+}
+
+.badge-high{
+    background:#2a0500;
+    color:#ff3c00;
+    border:1px solid #ff3c00
+}
+
+/* Existing risk effects */
+
+.high-risk-effect{
+    animation:redFlash 1s infinite alternate,
+    shake .5s infinite
+}
+
+@keyframes redFlash{
+    from{
+        box-shadow:0 0 20px rgba(255,0,0,.8)
+    }
+
+    to{
+        box-shadow:0 0 40px rgba(255,0,0,1)
+    }
+}
+
+@keyframes shake{
+    0%{transform:translate(0,0)}
+    25%{transform:translate(2px,0)}
+    50%{transform:translate(-2px,0)}
+    75%{transform:translate(2px,0)}
+    100%{transform:translate(0,0)}
+}
+
+.suspicious-effect{
+    animation:yellowGlow 2s infinite alternate;
+    position:relative;
+    overflow:hidden
+}
+
+@keyframes yellowGlow{
+    from{
+        box-shadow:0 0 15px rgba(255,170,0,.6)
+    }
+
+    to{
+        box-shadow:0 0 30px rgba(255,170,0,1)
+    }
+}
+
+.suspicious-effect::after{
+    content:"";
+    position:absolute;
+    top:0;
+    left:-100%;
+    width:50%;
+    height:100%;
+    background:linear-gradient(
+        90deg,
+        rgba(255,255,255,.2),
+        transparent
+    );
+    animation:sweep 3s infinite
+}
+
+@keyframes sweep{
+    from{left:-100%}
+    to{left:120%}
+}
+
+.low-risk-effect{
+    animation:calmGlow 3s infinite alternate
+}
+
+@keyframes calmGlow{
+    from{
+        box-shadow:0 0 15px rgba(0,255,136,.4)
+    }
+
+    to{
+        box-shadow:0 0 30px rgba(0,255,255,.6)
+    }
+}
+
+/* ML RISK */
+
+.ml-risk-wrap{
+    background:#071a2e;
+    border:2px solid rgba(0,255,255,.35);
+    border-radius:12px;
+    padding:1rem 1.5rem;
+    min-width:200px;
+    box-shadow:0 0 20px rgba(0,255,255,.15)
+}
+
+.ml-risk-label{
+    font-size:1rem;
+    font-weight:600
+}
+
+/* RULE SCORE */
+
+.rule-score{
+    margin-top:.8rem;
+    padding-top:.8rem;
+    border-top:1px solid rgba(0,255,255,.15);
+    font-size:.9rem;
+    color:#8bdcff;
+}
+
+.rule-score-value{
+    font-size:1.2rem;
+    font-weight:700;
+    margin-top:.2rem;
+}
+
+/* Reasons */
+
+.ml-reasons{
+    background:#071a2e;
+    border:2px solid rgba(0,255,255,.35);
+    border-radius:12px;
+    padding:1rem 1.5rem;
+    margin-top:1rem;
+    min-width:320px;
+    box-shadow:0 0 20px rgba(0,255,255,.15)
+}
+
+.ml-reasons h4{
+    font-size:.9rem;
+    letter-spacing:.08em;
+    margin-bottom:.3rem;
+    color:#8bdcff
+}
+
+.ml-reasons ul{
+    list-style:none;
+    padding-left:0;
+    display:flex;
+    flex-direction:column;
+    gap:.25rem
+}
+
+.ml-reasons li{
+    font-size:.85rem;
+    color:#cfefff
+}
+
+.actions{
+    display:flex;
+    gap:.75rem;
+    margin-top:1rem
+}
+
+.btn{
+    padding:.6rem 1.2rem;
+    border-radius:8px;
+    font-size:.8rem;
+    font-weight:600;
+    letter-spacing:.1em;
+    text-transform:uppercase;
+    text-decoration:none;
+    border:2px solid #00ffff;
+    color:#8bdcff;
+    transition:.2s;
+    background:#02071e;
+    text-shadow:0 0 5px rgba(0,255,255,.15)
+}
+
+.btn:hover{
+    border-color:#00ffff;
+    color:#00ffff;
+    text-shadow:0 0 10px rgba(0,255,255,.4)
+}
+
+.btn-primary{
+    background:#00ffff;
+    border-color:#00ffff;
+    color:#02071e
+}
+
+.btn-primary:hover{
+    background:#00d7ff;
+    color:#02071e
+}
+
+.scan-section{
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    justify-content:center;
+    gap:1rem;
+    width:100%;
+}
+
+.ml-reasons{
+    background:#071a2e;
+    border:2px solid rgba(0,255,255,.35);
+    border-radius:12px;
+    padding:1rem 1.5rem;
+    margin-top:1rem;
+    width:500px;
+    min-height:80px;
+    box-shadow:0 0 20px rgba(0,255,255,.15);
+}
+
+.ml-reasons h4{
+    font-size:.9rem;
+    letter-spacing:.08em;
+    margin-bottom:.8rem;
+    color:#8bdcff;
+}
+
+.ml-reasons ul{
+    list-style:none;
+    padding:0;
+    margin:0;
+    display:flex;
+    flex-direction:column;
+    gap:.5rem;
+}
+
+.ml-reasons li{
+    font-size:.85rem;
+    color:#cfefff;
+    padding:.35rem .5rem;
+    border-left:3px solid #00ffff;
+    display:block;
+}
+
+.ml-reasons strong{
+    color:#ff3c00;
+    margin-left:.5rem;
+}
+
+.no-reasons{
+    color:#8bdcff !important;
+    border-left-color:#8bdcff !important;
+}
+
 
 
 </style>
 
-
-</style>
 </head>
+
 <body>
+
 <div class="grid-bg"></div>
+
 <nav>
-  <span class="brand">PHISHSENCE</span>
-  <a href="{{ url_for('home') }}">Home</a>
-  <a href="{{ url_for('form') }}">URL</a>
-  <a href="{{ url_for('email_check') }}">Email</a>
-  <a href="{{ url_for('sms_check') }}">SMS</a>
-  <a href="{{ url_for('recovery') }}">Recovery</a>
+
+
+<span class="brand">PHISHSENSE</span>
+
+<a href="{{ url_for('home') }}">Home</a>
+
+<a href="{{ url_for('form') }}">URL</a>
+
+<a href="{{ url_for('email_check') }}">Email</a>
+
+<a href="{{ url_for('sms_check') }}">SMS</a>
+
+<a href="{{ url_for('recovery') }}">Recovery</a>
+
+
 </nav>
+
 <main>
-  <div class="result-label {% if risk_percentage >= 60 %}high{% elif risk_percentage >= 30 %}med{% else %}low{% endif %}">
+
+
+<!-- RESULT -->
+
+<div class="result-label
+    {% if final_score >= 60 %}
+        high
+    {% elif final_score >= 30 %}
+        med
+    {% else %}
+        low
+    {% endif %}">
+
     {{ result }}
-  </div>
+
+</div>
 
 
-  <!-- Warning Text -->
-  <div id="risk-warning" style="font-size:1.2rem;font-weight:700;text-align:center;margin-top:.5rem;"></div>
+<!-- WARNING -->
 
-  <!-- Risk Meter + ML Risk side by side -->
-  <div class="scan-section">
+<div
+    id="risk-warning"
+    style="
+        font-size:1.2rem;
+        font-weight:700;
+        text-align:center;
+        margin-top:.5rem;
+    ">
+</div>
+
+
+<!-- SPEEDOMETER + ML RISK -->
+
+<div class="scan-section">
+
+
+    <!-- SPEEDOMETER -->
+
     <div class="gauge-wrap">
-      <canvas id="gauge" width="260" height="150"></canvas>
-      <div class="pct-display" id="pct-num">0%</div>
-      <div class="pct-sub">Phishing Risk Score</div>
-      <div class="meta">
-        <span class="badge badge-low">0–29 Safe</span>
-        <span class="badge badge-med">30–59 Caution</span>
-        <span class="badge badge-high">60+ Danger</span>
-      </div>
+
+        <canvas
+            id="gauge"
+            width="260"
+            height="150">
+        </canvas>
+
+
+        <div
+            class="pct-display"
+            id="pct-num">
+
+            0%
+
+        </div>
+
+
+        <div class="pct-sub">
+
+            Phishing Risk Score
+
+        </div>
+
+
+        <!-- FINAL SCORE ADDED -->
+
+        <div class="final-score-box">
+
+            <div class="final-score-title">
+
+                Final Score
+
+            </div>
+
+            <div
+                class="final-score-value"
+                id="final-score">
+
+                {{ final_score }}%
+
+            </div>
+
+        </div>
+
+
+        <div class="meta">
+
+            <span class="badge badge-low">
+
+                0–29 Safe
+
+            </span>
+
+            <span class="badge badge-med">
+
+                30–59 Caution
+
+            </span>
+
+            <span class="badge badge-high">
+
+                60+ Danger
+
+            </span>
+
+        </div>
+
     </div>
+
+
+    <!-- ML RISK -->
 
     <div class="ml-risk-wrap">
-      <div class="ml-risk-label">
-        ML Risk: 
-       <span class="{% if ml_risk[0] >= 60 %}high{% elif ml_risk[0] >= 30 %}med{% else %}low{% endif %}">
-  {{ ml_risk[0] }}%
-</span>
 
-      </div>
+        <div class="ml-risk-label">
+
+            ML Risk:
+
+            <span
+                class="
+                {% if ml_risk >= 60 %}
+                    high
+                {% elif ml_risk >= 30 %}
+                    med
+                {% else %}
+                    low
+                {% endif %}
+                ">
+
+                {{ ml_risk }}%
+
+            </span>
+
+        </div>
+
+
+        <!-- RULE SCORE -->
+
+        <div class="rule-score">
+
+            Rule Score:
+
+            <div
+                class="
+                rule-score-value
+                {% if rule_score >= 60 %}
+                    high
+                {% elif rule_score >= 30 %}
+                    med
+                {% else %}
+                    low
+                {% endif %}
+                ">
+
+                {{ rule_score }}%
+
+            </div>
+
+        </div>
+
     </div>
-  </div>
 
-  <!-- Reasons under risk meter -->
-  <div class="ml-reasons">
+</div>
+
+
+
+
+
+
+<!-- REASONS -->
+
+<div class="ml-reasons">
+
     <h4>Reasons:</h4>
-    <ul>
-      {% for reason in reasons %}
-        <li>{{ reason }}</li>
-      {% endfor %}
-    </ul>
-  </div>
 
-  <div class="actions">
-    <a href="{{ url_for('form') }}" class="btn">Check Another URL</a>
-    <a href="{{ url_for('recovery') }}" class="btn btn-primary">Recovery Steps</a>
-    <a href="{{ url_for('home') }}" class="btn">Home</a>
-  </div>
+    <ul>
+        {% for reason in reasons %}
+
+        <li>
+            {% if reason is mapping %}
+
+                <span>{{ reason.text }}</span>
+
+                {% if reason.points %}
+                    <strong>(+{{ reason.points|int }})</strong>
+                {% endif %}
+
+            {% else %}
+
+                <span>{{ reason }}</span>
+
+            {% endif %}
+        </li>
+
+        {% endfor %}
+    </ul>
+
+</div>
+
+
+
+
+
+
+
+
+<!-- ACTIONS -->
+
+<div class="actions">
+
+    <a
+        href="{{ back_url }}"
+        class="btn">
+        Check Another {{ scan_type }}
+    </a>
+
+    <a
+        href="{{ url_for('recovery') }}"
+        class="btn btn-primary">
+        Recovery Steps
+    </a>
+
+    <a
+        href="{{ url_for('home') }}"
+        class="btn">
+        Home
+    </a>
+
+</div>
+
+
+
+
 </main>
+
 <script>
-const RISK = {{ risk_percentage }};
-const canvas = document.getElementById('gauge');
-const ctx = canvas.getContext('2d');
-const cx = 130, cy = 140, r = 110;
-const startAngle = Math.PI, endAngle = 2 * Math.PI;
+
+
+
+const RISK = Number(
+    {{ final_score|default(0)}}
+);
+
+
+const canvas =
+    document.getElementById('gauge');
+
+const ctx =
+    canvas.getContext('2d');
+
+
+const cx = 130;
+const cy = 140;
+const r = 110;
+
+
+const startAngle = Math.PI;
+const endAngle = 2 * Math.PI;
+
+
+/*
+    Risk color
+*/
 
 function colorAt(pct){
-  if(pct < 30) return '#00ff88';
-  if(pct < 60) return '#ffaa00';
-  return '#ff3c00';
+
+    if(pct < 30)
+        return '#00ff88';
+
+    if(pct < 60)
+        return '#ffaa00';
+
+    return '#ff3c00';
 }
+
+
+/*
+    Warning text
+*/
+
+function updateWarning(pct){
+
+    const warning =
+        document.getElementById(
+            'risk-warning'
+        );
+
+    if(pct >= 60){
+
+        warning.textContent =
+            '🚨 HIGH RISK — Potential phishing detected';
+
+        warning.style.color =
+            '#ff3c00';
+
+    }
+
+    else if(pct >= 30){
+
+        warning.textContent =
+            '⚠ MEDIUM RISK — Review carefully before proceeding';
+
+        warning.style.color =
+            '#ffaa00';
+
+    }
+
+    else{
+
+        warning.textContent =
+            '✅ LOW RISK — No major phishing indicators detected';
+
+        warning.style.color =
+            '#00ff88';
+
+    }
+
+}
+
+
+/*
+    Draw Speedometer
+*/
 
 function drawGauge(val){
-  ctx.clearRect(0,0,260,150);
-  const bg_end = endAngle;
-  ctx.beginPath();ctx.arc(cx,cy,r,startAngle,bg_end);
-  ctx.lineWidth=18;ctx.strokeStyle='#1e1e1e';ctx.lineCap='round';ctx.stroke();
 
-  const fill = startAngle + (val/100) * Math.PI;
-  ctx.beginPath();ctx.arc(cx,cy,r,startAngle,fill);
-  ctx.lineWidth=18;ctx.strokeStyle=colorAt(val);ctx.lineCap='round';ctx.stroke();
+    ctx.clearRect(
+        0,
+        0,
+        260,
+        150
+    );
 
-  const ticks = [0,25,50,75,100];
-  ticks.forEach(t=>{
-    const a = Math.PI + (t/100)*Math.PI;
-    const ix = cx + (r+10)*Math.cos(a), iy = cy + (r+10)*Math.sin(a);
-    const ox = cx + (r+20)*Math.cos(a), oy = cy + (r+20)*Math.sin(a);
-    ctx.beginPath();ctx.moveTo(ix,iy);ctx.lineTo(ox,oy);
-    ctx.lineWidth=1;ctx.strokeStyle='#333';ctx.stroke();
-    ctx.fillStyle='#444';ctx.font='10px Segoe UI';ctx.textAlign='center';ctx.textBaseline='middle';
-    const lx = cx + (r+32)*Math.cos(a), ly = cy + (r+32)*Math.sin(a);
-    ctx.fillText(t+'%', lx, ly);
-  });
 
-  const needleAngle = Math.PI + (val/100)*Math.PI;
-  const nx = cx + (r-18)*Math.cos(needleAngle), ny = cy + (r-18)*Math.sin(needleAngle);
-  ctx.beginPath();ctx.moveTo(cx,cy);ctx.lineTo(nx,ny);
-  ctx.lineWidth=3;ctx.strokeStyle='#fff';ctx.lineCap='round';ctx.stroke();
-  ctx.beginPath();ctx.arc(cx,cy,6,0,Math.PI*2);ctx.fillStyle='#ff3c00';ctx.fill();
+    /*
+        Background
+    */
+
+    ctx.beginPath();
+
+    ctx.arc(
+        cx,
+        cy,
+        r,
+        startAngle,
+        endAngle
+    );
+
+    ctx.lineWidth = 18;
+
+    ctx.strokeStyle =
+        '#1e1e1e';
+
+    ctx.lineCap =
+        'round';
+
+    ctx.stroke();
+
+
+    /*
+        Risk arc
+    */
+
+    const fill =
+        startAngle +
+        (val / 100) * Math.PI;
+
+
+    ctx.beginPath();
+
+    ctx.arc(
+        cx,
+        cy,
+        r,
+        startAngle,
+        fill
+    );
+
+    ctx.lineWidth = 18;
+
+    ctx.strokeStyle =
+        colorAt(val);
+
+    ctx.lineCap =
+        'round';
+
+    ctx.stroke();
+
+
+    /*
+        Tick marks
+    */
+
+    const ticks =
+        [0,25,50,75,100];
+
+
+    ticks.forEach(t => {
+
+        const a =
+            Math.PI +
+            (t / 100) * Math.PI;
+
+
+        const ix =
+            cx +
+            (r + 10) *
+            Math.cos(a);
+
+
+        const iy =
+            cy +
+            (r + 10) *
+            Math.sin(a);
+
+
+        const ox =
+            cx +
+            (r + 20) *
+            Math.cos(a);
+
+
+        const oy =
+            cy +
+            (r + 20) *
+            Math.sin(a);
+
+
+        ctx.beginPath();
+
+        ctx.moveTo(
+            ix,
+            iy
+        );
+
+        ctx.lineTo(
+            ox,
+            oy
+        );
+
+        ctx.lineWidth = 1;
+
+        ctx.strokeStyle =
+            '#333';
+
+        ctx.stroke();
+
+
+        /*
+            Labels
+        */
+
+        ctx.fillStyle =
+            '#444';
+
+        ctx.font =
+            '10px Segoe UI';
+
+        ctx.textAlign =
+            'center';
+
+        ctx.textBaseline =
+            'middle';
+
+
+        const lx =
+            cx +
+            (r + 32) *
+            Math.cos(a);
+
+
+        const ly =
+            cy +
+            (r + 32) *
+            Math.sin(a);
+
+
+        ctx.fillText(
+            t + '%',
+            lx,
+            ly
+        );
+
+    });
+
+
+    /*
+        Needle
+    */
+
+    const needleAngle =
+        Math.PI +
+        (val / 100) *
+        Math.PI;
+
+
+    const nx =
+        cx +
+        (r - 18) *
+        Math.cos(needleAngle);
+
+
+    const ny =
+        cy +
+        (r - 18) *
+        Math.sin(needleAngle);
+
+
+    ctx.beginPath();
+
+    ctx.moveTo(
+        cx,
+        cy
+    );
+
+    ctx.lineTo(
+        nx,
+        ny
+    );
+
+    ctx.lineWidth = 3;
+
+    ctx.strokeStyle =
+        '#fff';
+
+    ctx.lineCap =
+        'round';
+
+    ctx.stroke();
+
+
+    /*
+        Center
+    */
+
+    ctx.beginPath();
+
+    ctx.arc(
+        cx,
+        cy,
+        6,
+        0,
+        Math.PI * 2
+    );
+
+    ctx.fillStyle =
+        colorAt(val);
+
+    ctx.fill();
+
 }
 
+
+/*
+    Animation
+*/
+
 let cur = 0;
-const target = RISK;
-const pctEl = document.getElementById('pct-num');
-const step = () => {
-  if(cur < target){ cur = Math.min(cur+1, target); drawGauge(cur); pctEl.textContent=cur+'%'; pctEl.style.color=colorAt(cur); requestAnimationFrame(step); }
-  else drawGauge(target);
-};
-drawGauge(0); requestAnimationFrame(step);
+
+const target =
+    Math.max(
+        0,
+        Math.min(
+            100,
+            RISK
+        )
+    );
+
+
+const pctEl =
+    document.getElementById(
+        'pct-num'
+    );
+
+
+const finalScoreEl =
+    document.getElementById(
+        'final-score'
+    );
+
+
+function step(){
+
+    if(cur < target){
+
+        cur =
+            Math.min(
+                cur + 1,
+                target
+            );
+
+
+        drawGauge(cur);
+
+
+        pctEl.textContent =
+            Math.round(cur) + '%';
+
+
+        pctEl.style.color =
+            colorAt(cur);
+
+
+        finalScoreEl.textContent =
+            Number(cur).toFixed(2) + '%';
+
+
+        updateWarning(cur);
+
+
+        requestAnimationFrame(
+            step
+        );
+
+    }
+
+    else{
+
+        drawGauge(target);
+
+
+        pctEl.textContent =
+            Number(target).toFixed(2) + '%';
+
+
+        pctEl.style.color =
+            colorAt(target);
+
+
+        finalScoreEl.textContent =
+            Number(target).toFixed(2) + '%';
+
+
+        updateWarning(target);
+
+    }
+
+}
+
+
+/*
+    Start
+*/
+
+drawGauge(0);
+
+updateWarning(0);
+
+requestAnimationFrame(
+    step
+);
+
 </script>
+
 </body>
+
 </html>
-
-
-
-
-
-
