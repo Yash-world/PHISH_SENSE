@@ -1,387 +1,347 @@
-# 🛡️ Phishing Detection System
+# 🛡️ PhishSense — Multi-Channel Phishing Detection
 
-### AI-Powered Multi-Channel Threat Detection — URLs • Emails • SMS
-
-**A machine learning-based cybersecurity system that detects phishing attempts across URLs, emails, and SMS messages.**
-
-[Features](#-features) • [Architecture](#-architecture) • [Installation](#-installation) • [Dataset](#-dataset) • [Usage](#-usage) • [Tech Stack](#-tech-stack) • [Contributing](#-contributing)
-
----
-
-## 📖 Overview
-
-Phishing attacks remain one of the most common and dangerous cybersecurity threats — targeting individuals and organizations through deceptive **links, emails, and text messages**.
-
-This project combines **machine learning** with **cybersecurity heuristics** to analyze suspicious content and classify it as **legitimate** or **potentially malicious**.
-
-The system provides a unified platform for detecting phishing threats across three common attack surfaces:
-
-* 🔗 URLs
-* 📧 Emails
-* 📱 SMS
+A Flask web app that scores **URLs, emails and SMS messages** for phishing risk. It combines trained scikit-learn models with a hand-written rule engine and explains every result with the top reasons behind the score.
 
 ---
 
 ## ✨ Features
 
-| Module                           | Description                                                                    |
-| -------------------------------- | ------------------------------------------------------------------------------ |
-| 🔗 **URL Analyzer**              | Detects potentially malicious URLs using feature analysis and machine learning |
-| 📧 **Email Scanner**             | Analyzes email content and linguistic patterns to identify potential phishing  |
-| 📱 **SMS Detector**              | Identifies potential smishing attempts in SMS messages                         |
-| 📊 **Interactive Dashboard**     | Centralized interface for scan results and threat statistics                   |
-| 🧠 **ML-Powered Classification** | Separate machine learning models for URL, Email, and SMS detection             |
-| 🩹 **Recovery Guidance**         | Provides suggested security steps after a potential phishing incident          |
+- **URL check**: 36 engineered features → calibrated Random Forest, plus rules for IP hosts, punycode, typosquatting, brand misuse, suspicious TLDs and more.
+- **Email check**: TF-IDF + Logistic Regression, plus rules for urgency, credential requests, link/text mismatch and Reply-To mismatch.
+- **SMS check**: word + character n-gram TF-IDF with a 3-class model (ham / spam / smishing), plus India-specific scam rules (KYC, UPI, FASTag, electricity-bill, APK, AnyDesk).
+- **SMS link analysis**: every URL found in an SMS is run through the URL analyzer and raises the SMS rule score.
+- **OCR**: upload a PNG/JPG/WEBP screenshot of an email or SMS (5 MB limit) and the text is extracted with Tesseract.
+- **Explainable output**: rule score, ML score, final score and up to 5 ranked reasons.
+- **Recovery page**: step-by-step guidance after a password, bank, OTP or device compromise (includes India's 1930 cyber-crime helpline).
 
 ---
 
-## 🏗️ Architecture
+## 📸 Screenshots
 
-```text
-┌─────────────────────────────────────────────────────────┐
-│                    Web Interface                        │
-│  home.html │ dashboard.html │ url.html │ email.html   │
-│             │ sms.html │ recovery.html                │
-└──────────────────────────┬──────────────────────────────┘
-                           │
-                    ┌──────▼──────┐
-                    │   app.py    │
-                    │ Flask Backend│
-                    └──────┬──────┘
-                           │
-        ┌──────────────────┼──────────────────┐
-        ▼                  ▼                  ▼
-┌───────────────┐  ┌────────────────┐  ┌────────────────┐
-│url_ml_model.py│  │email_ml_model.py│  │sms_ml_model.py │
-│  (URL Model)  │  │  (Email Model) │  │  (SMS Model)   │
-└───────────────┘  └────────────────┘  └────────────────┘
-        │                  │                  │
-        └──────────────────┼──────────────────┘
-                           ▼
-                   ┌───────────────┐
-                   │  Features.py  │
-                   │Feature Extraction│
-                   └───────────────┘
+| Home | URL check |
+|---|---|
+| <img src="screenshots/home.png" width="420" alt="Home page"> | <img src="screenshots/url.png" width="420" alt="URL check page"> |
+
+| Email check | SMS check |
+|---|---|
+| <img src="screenshots/email.png" width="420" alt="Email check page"> | <img src="screenshots/sms.png" width="420" alt="SMS check page"> |
+
+| Result: high risk | Result: low risk |
+|---|---|
+| <img src="screenshots/result-high.png" width="420" alt="High risk result"> | <img src="screenshots/result-low.png" width="420" alt="Low risk result"> |
+
+| Recovery guidance |
+|---|
+| <img src="screenshots/recovery.png" width="420" alt="Recovery page"> |
+
+> The two result screenshots show the dashboard layout with illustrative sample values, not output from a trained model. Replace them with your own captures after training if you want real scores.
+
+---
+
+## 🔎 How scoring works
+
+```
+Final score = 0.4 × Rule score + 0.6 × ML score
 ```
 
+| Final score | Risk |
+|---|---|
+| < 30 | Low |
+| 30 – 59.99 | Medium |
+| ≥ 60 | High |
+
+**Overrides** (`utils/scoring.py`):
+- Any hard flag → final score is raised to **at least 70**.
+- A trusted domain with **no** hard flag → final score is capped at **15**.
+
+**Hard flags**
+
+| Channel | Hard flags |
+|---|---|
+| URL | `@` in URL, IP-address host, punycode / non-ASCII host, brand in wrong place, possible typosquatting, credential keyword + suspicious TLD |
+| Email | credential request (send/share OTP, enter password, CVV), link text ≠ destination, threat + urgency, From/Reply-To domain mismatch |
+| SMS | OTP-sharing request, numeric sender claiming to be a bank/service |
+
+**SMS ML risk** = `P(smishing) + 0.5 × P(spam)`, capped at 100.
+
 ---
 
-## 🛠️ Tech Stack
+## 📂 Project structure
 
-* **Backend:** Python, Flask
-* **Machine Learning:** Scikit-learn
-* **Frontend:** HTML, CSS, JavaScript
-* **Feature Engineering:** Custom feature extraction pipeline (`Features.py`)
-* **Datasets:** Public phishing-related datasets hosted on Kaggle
-
----
-
-## 📂 Project Structure
-
-```text
-Phishing-Detection-System/
-│
-├── app.py
-├── Features.py
-│
-├── url_ml_model.py
-├── email_ml_model.py
-├── sms_ml_model.py
-│
-├── dataset/
-│   └── .gitkeep
-│
-├── models/
-│   ├── url_model.pkl
-│   ├── email_model.pkl
-│   └── sms_model.pkl
-│
-├── home.html
-├── dashboard.html
-├── url.html
-├── email.html
-├── sms.html
-├── recovery.html
-│
+```
+Phish_sense/
+├── app.py                    # Flask app and routes
 ├── requirements.txt
-└── README.md
+├── .gitignore
+├── utils/
+│   ├── Features.py           # URL parsing + 36-feature extraction (analyze_url)
+│   ├── brands.py             # Brands, trusted domains, TLDs, keyword lists
+│   ├── scoring.py            # combine(), risk_label(), apply_overrides()
+│   └── text_rules.py         # Email and SMS rule engines
+├── ml_models/
+│   ├── url_ml_model.py       # Trains the URL model
+│   ├── email_ml_model.py     # Trains the email model
+│   └── sms_ml_model.py       # Trains the SMS model
+├── models/                   # Generated by training (see below)
+├── datasets/                 # Training CSVs (not committed)
+├── templates/                # home, url, email, sms, dashboard, recovery
+└── tests/test_detection.py
 ```
 
-> **Note:** The actual dataset files are not included in this GitHub repository because of their large file size. The datasets are hosted on Kaggle.
+### Routes
 
-The `.gitkeep` file only keeps the empty `dataset` folder available in the GitHub repository.
+| Route | Methods | Purpose |
+|---|---|---|
+| `/` | GET | Home |
+| `/url` | GET, POST | URL scan |
+| `/email` | GET, POST | Email scan (text and/or screenshot) |
+| `/sms` | GET, POST | SMS scan (text, optional sender, and/or screenshot) |
+| `/recovery` | GET, POST | Recovery steps by incident type |
 
 ---
 
-## 📊 Dataset
+## 📊 Datasets
 
-This project uses separate datasets for:
+| Module | File | Columns used | Labels |
+|---|---|---|---|
+| URL | `PhiUSIIL_Phishing_URL_Dataset.csv` | `URL`, `label` | Raw `1 = legit, 0 = phishing`; flipped during training to `1 = phishing` |
+| Email | `CEAS_08.csv` | `subject`, `body`, `label` | `1 = phishing/spam`, `0 = legit` |
+| SMS | `Dataset_10191.csv` | `LABEL`, `TEXT` | `ham = 0`, `spam = 1`, `smishing = 2` |
 
-* 🔗 URL Phishing Detection
-* 📧 Email Phishing Detection
-* 📱 SMS Phishing Detection
+Download them from Kaggle: https://www.kaggle.com/datasets/yashpratap02/phishing-dectection-system and place them in `datasets/` **without renaming**.
 
-Because the datasets are large, they are hosted on Kaggle instead of being uploaded directly to GitHub.
-
-### 🔗 Kaggle Dataset
-
-Download the datasets from:
-
-**[Download Phishing Detection Datasets from Kaggle](https://www.kaggle.com/datasets/yashpratap02/phishing-dectection-system)**
+> `CEAS_08` is a 2008 corpus, so the email model may not reflect modern phishing campaigns.
 
 ---
 
-### 📥 Dataset Setup
+## 🧠 Models
 
-After cloning the repository, download the required dataset files from Kaggle.
+| Model | Algorithm | Notes |
+|---|---|---|
+| URL | `RandomForest` (300 trees, balanced) wrapped in `CalibratedClassifierCV` (isotonic, cv=3) | De-duplicated URLs, domain-grouped 80/20 split (`GroupShuffleSplit`), ~1,000 synthetic "hard negative" URLs (deep paths on legit domains), feature matrix cached to `models/url_features.npy` |
+| Email | TF-IDF (50k features, 1–2 grams) → Logistic Regression (`C=4`, balanced) | Stratified 80/20 split |
+| SMS | TF-IDF word 1–2 grams + char_wb 3–5 grams → Logistic Regression (balanced) | Stratified 80/20 split, saves a smishing alert threshold to `models/sms_threshold.json` |
 
-Create or use the `dataset` folder:
-
-```text
-Phishing-Detection-System/
-└── dataset/
-```
-
-Place the downloaded dataset files inside this folder.
-
-The final structure should look similar to:
-
-```text
-Phishing-Detection-System/
-│
-├── dataset/
-│   ├── URL_DATASET.csv
-│   ├── CEAS_08.csv
-│   └── SMS_DATASET.csv
-│
-├── app.py
-├── Features.py
-├── url_ml_model.py
-├── email_ml_model.py
-└── sms_ml_model.py
-```
-
-### 📧 Email Dataset
-
-The Email Detection model uses:
-
-```text
-CEAS_08.csv
-```
-
-Place the file here:
-
-```text
-dataset/CEAS_08.csv
-```
-
-The dataset is loaded using a project-relative path:
-
-```python
-from pathlib import Path
-import pandas as pd
-
-BASE_DIR = Path(__file__).resolve().parent
-df = pd.read_csv(BASE_DIR / "dataset" / "CEAS_08.csv")
-```
-
-This allows the project to work on different computers without using a computer-specific path such as:
-
-```text
-C:\Users\yashp\Downloads\CEAS_08.csv
-```
-
-> **Important:** Dataset filenames must match the filenames expected by the corresponding Python scripts.
+Each trainer prints a classification report and ROC-AUC (and PR-AUC / confusion matrix for URL and SMS).
 
 ---
 
-## ⚙️ Installation
+## 📈 Model Performance
 
-### 1. Clone the repository
+All scores below are measured on held-out test sets from the datasets listed above, not on live traffic.
+
+### URL model (36 lexical features + calibrated Random Forest)
+
+Test set: 42,069 URLs (20% domain-grouped split)
+
+| Class | Precision | Recall | F1 | Support |
+|---|---|---|---|---|
+| Legitimate | 0.9894 | 0.9893 | 0.9894 | 27,126 |
+| Phishing | 0.9807 | 0.9807 | 0.9807 | 14,943 |
+
+Accuracy: **98.63%** | ROC-AUC: **0.9967** | PR-AUC: **0.9959**
+
+**Confusion matrix**
+
+| | Predicted legit | Predicted phishing |
+|---|---|---|
+| **Actual legit** | 26837 (TN) | 289 (FP) |
+| **Actual phishing** | 288 (FN) | 14655 (TP) |
+
+- Legitimate URLs flagged as phishing: **1.07%** (289 / 27,126).
+- Phishing URLs missed: **1.93%** (288 / 14,943).
+- Because the split is grouped by domain, no domain appears in both train and test.
+
+> The test set is about 35% phishing, much higher than real traffic, and the PhiUSIIL dataset is relatively easy. Real-world precision will likely be lower, so treat these as upper-bound estimates.
+
+### Email model (TF-IDF + Logistic Regression)
+
+Test set: 7,831 emails (20% stratified split)
+
+| Class | Precision | Recall | F1 | Support |
+|---|---|---|---|---|
+| Legitimate | 0.9965 | 0.9988 | 0.9977 | 3,462 |
+| Phishing | 0.9991 | 0.9973 | 0.9982 | 4,369 |
+
+Accuracy: **99.80%** | ROC-AUC: **0.9998**
+
+**Confusion matrix**
+
+| | Predicted legit | Predicted phishing |
+|---|---|---|
+| **Actual legit** | 3458 (TN) | 4 (FP) |
+| **Actual phishing** | 12 (FN) | 4357 (TP) |
+
+Only 4 legitimate emails were flagged as phishing and 12 phishing emails were missed.
+
+> These scores are on `CEAS_08` (2008), which is an easy and dated corpus, so they likely overstate performance on modern phishing emails.
+
+### SMS model (word + char TF-IDF + Logistic Regression)
+
+Test set: 2,039 messages (20% stratified split, 3 classes)
+
+| Class | Precision | Recall | F1 | Support |
+|---|---|---|---|---|
+| Ham | 1.0000 | 0.9941 | 0.9970 | 679 |
+| Spam | 0.9555 | 0.9779 | 0.9666 | 680 |
+| Smishing | 0.9760 | 0.9588 | 0.9674 | 680 |
+
+Accuracy: **97.69%** | Macro F1: **0.9770**
+
+**Confusion matrix**
+
+| | Predicted ham | Predicted spam | Predicted smishing |
+|---|---|---|---|
+| **Actual ham** | 675 | 3 | 1 |
+| **Actual spam** | 0 | 665 | 15 |
+| **Actual smishing** | 0 | 28 | 652 |
+
+- No spam or smishing message was predicted as ham.
+- The main confusion is between **spam and smishing**: 28 smishing messages were labelled spam and 15 spam messages were labelled smishing. Since the SMS risk score is `P(smishing) + 0.5 × P(spam)`, a smishing message labelled spam still gets a partial risk score.
+- Ham false-positive rate at combined risk ≥ 30%: **1.18%**.
+- Smishing recall: **95.88%**.
+
+> The SMS dataset is small (~10k messages), so performance on new scam styles may be lower.
+
+---
+
+## 🌲 Random Forest in this project (URL model)
+
+The **URL detector** is the only module that uses Random Forest. The email and SMS detectors use TF-IDF + Logistic Regression instead, because they work on free text.
+
+### What it is
+
+A Random Forest is an ensemble of many decision trees. Each tree is trained on a random sample of the data and a random subset of features, and the final prediction is the combined vote of all trees. This makes it far more stable than a single tree and resistant to overfitting.
+
+### Why it fits URLs
+
+- The input is a **36-number feature vector** (lengths, counts, flags, ratios), which is tabular data where tree models work very well.
+- It captures non-linear combinations (for example, "long URL **and** many hyphens **and** suspicious TLD") without manual rules.
+- It needs no feature scaling and predicts quickly.
+
+### Where it is used
+
+```
+URL typed by user
+      ↓
+utils/Features.py → analyze_url()      → 36 features
+      ↓
+models/url_model.pkl (Random Forest)   → P(phishing)  = ML score
+      ↓
+app.py: final = 0.4 × rule score + 0.6 × ML score → overrides → risk label
+```
+
+Training lives in `ml_models/url_ml_model.py`; inference is `_class_probability(url_model, features, 1)` in `app.py`.
+
+### Configuration
+
+| Setting | Value | Why |
+|---|---|---|
+| `n_estimators` | 300 | Enough trees for stable probabilities |
+| `min_samples_leaf` | 2 | Avoids memorizing single URLs |
+| `class_weight` | `balanced_subsample` | Handles class imbalance per tree |
+| `random_state` | 42 | Reproducible results |
+| `n_jobs` | -1 | Uses all CPU cores |
+| Wrapper | `CalibratedClassifierCV(method="isotonic", cv=3)` | Turns raw votes into reliable probabilities, so "85%" means about 85% |
+
+### Training steps
+
+1. Load `URL` and `label` from PhiUSIIL, drop empty rows and duplicate URLs.
+2. Flip labels so `1 = phishing`, `0 = legitimate`.
+3. Extract (or load from cache) the 36 features per URL.
+4. Add synthetic **hard negatives**: benign-looking deep URLs such as `/account/settings/profile` on ~250 legitimate domains, so the model doesn't treat every login or account path as phishing.
+5. Split 80/20 with `GroupShuffleSplit` by registered domain, so the same domain never appears in both train and test.
+6. Fit the calibrated Random Forest, print precision/recall, ROC-AUC, PR-AUC and the confusion matrix, and save `models/url_model.pkl`.
+
+### The 36 features
+
+| Group | Features |
+|---|---|
+| Length and counts | URL, host and path length; counts of `.` `-` `_` `@` `%` `/` `?` `=`; query parameters |
+| Characters | digits, uppercase, letters, digit ratio |
+| Host structure | host tokens, subdomain count, domain label length, longest token, host hyphens, host digits |
+| Security flags | suspicious TLD, brand in wrong place, typosquatting, punycode, non-ASCII, URL shortener, credential keyword count, non-standard port, `data:`/`javascript:` scheme, `//` in path, dangerous file extension, long URL (> 75 chars) |
+| Randomness | domain entropy, vowel/consonant ratio |
+
+### Limitations
+
+- Features are purely **lexical**: the model never visits the page, checks WHOIS or looks at page content.
+- The saved `url_model.pkl` is large (~300 MB) because calibration with `cv=3` stores three fitted forests of 300 trees each.
+- Always load pickles only from files you trained yourself.
+
+---
+
+## ⚙️ Setup
 
 ```bash
-git clone https://github.com/Yash-world/Phishing-Detection-System.git
-cd Phishing-Detection-System
-```
-
-### 2. Create a virtual environment
-
-```bash
+# 1. Create a virtual environment
 python -m venv venv
-```
+source venv/bin/activate        # Windows: venv\Scripts\activate
 
-### 3. Activate the virtual environment
-
-**Windows:**
-
-```bash
-venv\Scripts\activate
-```
-
-**Linux/macOS:**
-
-```bash
-source venv/bin/activate
-```
-
-### 4. Install dependencies
-
-```bash
+# 2. Install dependencies
 pip install -r requirements.txt
 ```
 
-### 5. Download the datasets
+**Tesseract OCR** must be installed on your OS (not via pip) if you want screenshot scanning.
 
-Download the required datasets from Kaggle:
+### Train the models
 
-**[Kaggle Dataset](https://www.kaggle.com/datasets/yashpratap02/phishing-dectection-system)**
-
-Place the downloaded files inside:
-
-```text
-dataset/
-```
-
-For example:
-
-```text
-dataset/
-├── Dataset_10191.csv
-├── CEAS_08.csv
-└── PhiUSIIL_Phishing_URL_Dataset.csv
-```
-
-### 6. Train the models
-
-If you want to train the models from scratch, run the corresponding training scripts provided in the project.
-
-For example:
+Run from the project root:
 
 ```bash
-python url_ml_model.py
-python email_ml_model.py
-python sms_ml_model.py
+python ml_models/url_ml_model.py
+python ml_models/email_ml_model.py
+python ml_models/sms_ml_model.py
 ```
 
-> **Note:** The exact training command depends on the implementation of each model file. If pre-trained model files are already available, retraining may not be required.
+This creates `models/url_model.pkl`, `email_model.pkl`, `sms_model.pkl`, `sms_threshold.json`, `url_features.npy` and `url_features_meta.json`. The first URL run extracts features for ~235k URLs and takes a while; later runs reuse the cache.
 
-### 7. Run the application
+### Run the app
 
 ```bash
 python app.py
+# → http://127.0.0.1:5000/
 ```
 
-The application will start at:
-
-```text
-http://127.0.0.1:5000/
-```
-
-Open this address in your browser.
-
----
-
-## 🚀 Usage
-
-1. Launch the Flask application.
-2. Open the **Home** page.
-3. Select a scan type:
-
-   * URL
-   * Email
-   * SMS
-4. Enter the content you want to analyze.
-5. The system extracts the required features.
-6. The corresponding machine learning model processes the input.
-7. The result is displayed as:
-
-   * ✅ Legitimate
-   * 🚨 Phishing Detected
-8. If a suspicious result is detected, refer to the **Recovery** page for suggested security steps.
-
----
-
-## 🧠 Model Training
-
-The system uses separate machine learning models for different phishing channels.
-
-### 🔗 URL Detection
-
-The URL model analyzes URL characteristics and extracted features to identify potentially malicious URLs.
-
-### 📧 Email Detection
-
-The Email model analyzes email content and linguistic characteristics to identify potential phishing emails.
-
-The email dataset used by the project includes:
-
-```text
-CEAS_08.csv
-```
-
-### 📱 SMS Detection
-
-The SMS model analyzes message content and linguistic patterns to identify potential smishing messages.
-
----
-
-## ⚠️ Dataset and Model Requirements
-
-If you are only running the application with pre-trained models, you may not need to download the datasets.
-
-If you want to **retrain the models**, you must:
-
-1. Download the required datasets from Kaggle.
-2. Place them inside the `dataset/` folder.
-3. Make sure the filenames match the paths used in the Python scripts.
-4. Run the appropriate model training scripts.
-5. Verify that the trained model files are generated correctly.
-6. Start the Flask application.
-
----
-
-## 🗺️ Roadmap
-
-* [ ] Add REST API endpoints for programmatic access
-* [ ] Browser extension for URL scanning
-* [ ] Model performance metrics dashboard
-* [ ] Precision/Recall/F1 reporting
-* [ ] Support for additional languages
-* [ ] Dockerize the application
-
----
-
-## 🤝 Contributing
-
-Contributions are welcome!
-
-To contribute:
-
-1. Fork the repository.
-2. Create a feature branch:
+Enable debug mode with `FLASK_DEBUG=1`. For production, use gunicorn (already in `requirements.txt`):
 
 ```bash
-git checkout -b feature/amazing-feature
+gunicorn app:app
 ```
 
-3. Commit your changes:
+### Optional: grammar signal
+
+Set `GRAMMAR_ENABLED=1` and `pip install language-tool-python` (requires Java). It adds up to 10 rule points to the email score.
+
+### Tests
 
 ```bash
-git commit -m "Add amazing feature"
+pytest -q
 ```
 
-4. Push to the branch:
-
-```bash
-git push origin feature/amazing-feature
-```
-
-5. Open a Pull Request.
+Covers URL feature shape and normalization, hard flags, trusted-domain handling, risk thresholds, score combination, email/SMS rules, the "are you free tonight?" false-positive case and empty-input handling.
 
 ---
+
+## 📝 Notes from code review
+
+Things worth knowing, or fixing, if you keep developing this:
+
+1. **Large artifacts.** `url_model.pkl` is ~300 MB and the datasets total ~125 MB. Keep them out of Git (the `.gitignore` already does) or use Git LFS / a release asset.
+2. **`sms_threshold.json` is saved but never read.** `app.py` doesn't use the smishing alert threshold; it relies only on the 0.4/0.6 blend.
+3. **Duplicated URL weights.** `WEIGHTS_URL` in `utils/scoring.py` is unused; the real weights are hard-coded in `_url_rule_score()` in `app.py`. Consider consolidating.
+4. **Unused imports** in `app.py` (`extract_features`, `score_from_points`), and unused legacy helpers `extract_email_features` / `extract_sms_features` in `Features.py`.
+5. **`.gitignore` ignores `models/*.json`**, which hides `url_features_meta.json` and `sms_threshold.json`; fine if intentional.
+6. **`__pycache__/` was included in the zip** and should not be committed.
+7. **Pickle files are not safe to load from untrusted sources.** Only load models you trained yourself.
+8. **Rule coverage is lexical.** Keyword and brand lists are small and fixed, and the trusted-domain list is 26 entries, so unfamiliar legit sites rely entirely on the ML score.
+
+---
+
+## ⚠️ Disclaimer
+
+This is a defensive aid, not proof. A score doesn't prove a URL, email or SMS is malicious or safe. Always verify through the official website or app, and never share OTPs, passwords or card details.
 
 ## 👤 Author
 
-**Yash-world**
-
-GitHub: [@Yash-world](https://github.com/Yash-world)
+**Yash-world** — https://github.com/Yash-world
