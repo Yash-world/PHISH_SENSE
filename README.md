@@ -47,8 +47,6 @@ A Flask web app that scores **URLs, emails and SMS messages** for phishing risk.
 🔴 Result: high risk 
 <p align="center">
   <img src="https://github.com/user-attachments/assets/c6bc7af3-413c-4f80-84b8-ad73dfa9ac49" width="800" alt="High risk result (score)">
-</p>
-<p align="center">
   <img src="https://github.com/user-attachments/assets/80f46785-673f-4e4a-b499-53e0267ae8be" width="800" alt="High risk result (reasons)">
 </p>
 <p align="center"><em>Rule score, ML score, final score and the top reasons behind the verdict.</em></p>
