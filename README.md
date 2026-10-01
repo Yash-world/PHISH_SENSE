@@ -338,9 +338,7 @@ Things worth knowing, or fixing, if you keep developing this:
 
 ---
 
-## ⚠️ Disclaimer
 
-This is a defensive aid, not proof. A score doesn't prove a URL, email or SMS is malicious or safe. Always verify through the official website or app, and never share OTPs, passwords or card details.
 
 ## 👤 Author
 
