@@ -20,19 +20,28 @@ A Flask web app that scores **URLs, emails and SMS messages** for phishing risk.
 
 | Home | URL check |
 |---|---|
-| <img src="screenshots/home.png" width="420" alt="Home page"> | <img src="screenshots/url.png" width="420" alt="URL check page"> |
+| <img width="1920" height="1080" alt="Screenshot (356)" src="https://github.com/user-attachments/assets/ebb7d128-97fe-41cf-aa07-87fdb21be53e" />
+ | <img width="1920" height="1080" alt="Screenshot (357)" src="https://github.com/user-attachments/assets/9474165b-3c1b-4ff2-b4f3-81f63b0e1d08" />
+|
 
 | Email check | SMS check |
 |---|---|
-| <img src="screenshots/email.png" width="420" alt="Email check page"> | <img src="screenshots/sms.png" width="420" alt="SMS check page"> |
+| <img width="1920" height="1080" alt="Screenshot (358)" src="https://github.com/user-attachments/assets/4779ccdc-dacb-4e96-9070-a408d11d45bd" />
+ |<img width="1920" height="1080" alt="Screenshot (359)" src="https://github.com/user-attachments/assets/80180f1a-d78b-4595-ab3b-dd6a8945ed42" />
+|
 
 | Result: high risk | Result: low risk |
 |---|---|
-| <img src="screenshots/result-high.png" width="420" alt="High risk result"> | <img src="screenshots/result-low.png" width="420" alt="Low risk result"> |
+| <img width="1920" height="941" alt="Screenshot (361)" src="https://github.com/user-attachments/assets/c6bc7af3-413c-4f80-84b8-ad73dfa9ac49" 
+<img width="1920" height="436" alt="Screenshot (362)" src="https://github.com/user-attachments/assets/80f46785-673f-4e4a-b499-53e0267ae8be" />
+/>
+ | <img width="1920" height="1080" alt="Screenshot (364)" src="https://github.com/user-attachments/assets/43842fcf-19b8-4dbf-aa6f-0a65a1338e32" />
+ |
 
 | Recovery guidance |
 |---|
-| <img src="screenshots/recovery.png" width="420" alt="Recovery page"> |
+| <img width="1920" height="1080" alt="Screenshot (360)" src="https://github.com/user-attachments/assets/3536f1d8-4738-4ff2-bd16-2c483fe755b7" />
+ |
 
 > The two result screenshots show the dashboard layout with illustrative sample values, not output from a trained model. Replace them with your own captures after training if you want real scores.
 
